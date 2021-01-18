@@ -1,0 +1,46 @@
+name: CI
+
+on: 
+  push:
+    paths-ignore:
+      - 'doc/**'
+      - '*.md'
+  
+jobs:
+
+  Release:
+    runs-on: windows-latest
+    if: github.ref == 'refs/heads/master'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '3.1.100'
+  
+      - name: Install unity-packer
+        run: dotnet tool install -g unity-packer
+  
+      - name: Package
+        run: |
+          unity-packer pack MirrorPositionSync.unitypackage source Assets/MirrorPositionSync LICENSE Assets/MirrorPositionSync/LICENSE README.md Assets/MirrorPositionSync/README.md
+
+      - uses: actions/upload-artifact@v1
+        with:
+          name: MirrorPositionSync.unitypackage
+          path: MirrorPositionSync.unitypackage
+
+      - name: Release
+        uses: cycjimmy/semantic-release-action@v2
+        with:
+          extra_plugins: |
+            @semantic-release/exec
+            @semantic-release/changelog
+            @semantic-release/git
+          branch: master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
