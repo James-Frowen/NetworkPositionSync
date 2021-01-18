@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using UnityEngine;
 
-namespace Mirror.TransformSyncing
+namespace JamesFrowen.PositionSync
 {
     public struct TransformState
     {

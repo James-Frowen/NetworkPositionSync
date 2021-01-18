@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.TestTools;
 using RangeAttribute = NUnit.Framework.RangeAttribute;
 
-namespace Mirror.TransformSyncing.Tests
+namespace JamesFrowen.PositionSync.Tests
 {
     public class SnapshotBufferTests
     {

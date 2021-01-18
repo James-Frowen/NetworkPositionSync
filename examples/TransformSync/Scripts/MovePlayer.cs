@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Mirror.TransformSyncing.Example
+namespace JamesFrowen.PositionSync.Example
 {
     public class MovePlayer : NetworkBehaviour
     {

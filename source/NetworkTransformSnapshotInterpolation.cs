@@ -1,9 +1,9 @@
 using System;
 using System.Runtime.CompilerServices;
-using Mirror.TransformSyncing;
+using JamesFrowen.PositionSync;
 using UnityEngine;
 
-namespace Mirror
+namespace JamesFrowen.PositionSync
 {
     [AddComponentMenu("Network/NetworkTransformSnapshotInterpolation")]
     // placeholder name, can be renamed when old component gets removed

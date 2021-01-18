@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.AI;
 
-namespace Mirror.TransformSyncing.Example
+namespace JamesFrowen.PositionSync.Example
 {
     /// <summary>
     /// Sets NavMesh destination for cube. The server will then sync the position to the clients using NetworkTransformBehaviour

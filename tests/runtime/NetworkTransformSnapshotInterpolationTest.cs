@@ -5,7 +5,7 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 
-namespace Mirror.TransformSyncing.Tests.Runtime
+namespace JamesFrowen.PositionSync.Tests.Runtime
 {
     public class NetworkTransformSnapshotInterpolationTest : HostSetup
     {
