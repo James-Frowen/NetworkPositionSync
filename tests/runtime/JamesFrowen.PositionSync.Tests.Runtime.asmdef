@@ -1,0 +1,15 @@
+{
+    "name": "JamesFrowen.PositionSync.Tests.Runtime",
+    "references": [
+        "Mirror",
+        "JamesFrowen.PositionSync"
+    ],
+    "optionalUnityReferences": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": []
+}
