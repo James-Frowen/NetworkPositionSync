@@ -4,12 +4,18 @@
         "Mirror",
         "JamesFrowen.PositionSync"
     ],
-    "optionalUnityReferences": [],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
-    "overrideReferences": false,
-    "precompiledReferences": [],
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "NSubstitute.dll",
+        "Castle.Core.dll",
+        "System.Threading.Tasks.Extensions.dll"
+    ],
     "autoReferenced": true,
     "defineConstraints": []
 }

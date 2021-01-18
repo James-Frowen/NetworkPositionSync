@@ -1,6 +1,6 @@
 using System;
 using System.Runtime.CompilerServices;
-using JamesFrowen.PositionSync;
+using Mirror;
 using UnityEngine;
 
 namespace JamesFrowen.PositionSync
