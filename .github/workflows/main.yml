@@ -10,7 +10,7 @@ jobs:
 
   Release:
     runs-on: windows-latest
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -41,6 +41,6 @@ jobs:
             @semantic-release/exec
             @semantic-release/changelog
             @semantic-release/git
-          branch: master
+          branch: main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
