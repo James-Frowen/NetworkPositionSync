@@ -2,8 +2,8 @@
     "name": "Mirror.TransformSync.Example",
     "references": [
         "Mirror",
-        "JamesFrowen.BitPacking",
-        "Mirror.TransformSync"
+        "JamesFrowen.PositionSync",
+        "Mirror.Tests.Runtime"
     ],
     "optionalUnityReferences": [],
     "includePlatforms": [],

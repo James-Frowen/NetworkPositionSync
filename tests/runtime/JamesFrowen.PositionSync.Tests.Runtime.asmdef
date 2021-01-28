@@ -2,7 +2,8 @@
     "name": "JamesFrowen.PositionSync.Tests.Runtime",
     "references": [
         "Mirror",
-        "JamesFrowen.PositionSync"
+        "JamesFrowen.PositionSync",
+        "Mirror.Tests.Runtime"
     ],
     "optionalUnityReferences": [
         "TestAssemblies"

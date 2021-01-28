@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Mirror;
 using Mirror.Tests.Runtime;
 using NUnit.Framework;
 using UnityEngine;
@@ -30,12 +31,7 @@ namespace JamesFrowen.PositionSync.Tests.Runtime
             clientNT = clientGO.AddComponent<NetworkTransformSnapshotInterpolation>();
 
             // set up Identitys so that server object can send message to client object in host mode
-            serverNI.OnStartServer();
-            serverNI.RebuildObservers(true);
-
-            clientNI.netId = serverNI.netId;
-            NetworkIdentity.spawned[serverNI.netId] = clientNI;
-            clientNI.OnStartClient();
+            FakeSpawnServerClientIdentity(serverNI, clientNI);
 
             // reset both transforms
             serverGO.transform.position = Vector3.zero;

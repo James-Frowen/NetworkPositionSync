@@ -1,3 +1,4 @@
+using Mirror;
 using UnityEngine;
 
 namespace JamesFrowen.PositionSync.Example
