@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -86,7 +87,7 @@ namespace JamesFrowen.PositionSync
         {
             if (!IsEmpty && serverTime < Last.time)
             {
-                logger.LogError($"Adding Snapshot to buffer out of order, last t={Last.time:0.000}, new t={serverTime:0.000}");
+                throw new ArgumentException($"Can not add Snapshot to buffer out of order, last t={Last.time:0.000}, new t={serverTime:0.000}");
             }
 
             buffer.Add(new Snapshot(state, serverTime));
@@ -102,8 +103,7 @@ namespace JamesFrowen.PositionSync
         {
             if (buffer.Count == 0)
             {
-                logger.LogError("No snapshots, returning default");
-                return default;
+                throw new InvalidOperationException("No snapshots in buffer");
             }
 
             // first snapshot
