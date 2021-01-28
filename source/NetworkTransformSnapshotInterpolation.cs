@@ -38,8 +38,6 @@ namespace JamesFrowen.PositionSync
 
         [SerializeField] bool showDebugGui = false;
 
-        float localTime;
-
         /// <summary>
         /// Set when client with authority updates the server
         /// </summary>
@@ -59,6 +57,7 @@ namespace JamesFrowen.PositionSync
         // client
         readonly SnapshotBuffer snapshotBuffer = new SnapshotBuffer();
         InterpolationTime interpolationTime;
+
         private void Start()
         {
             interpolationTime = new InterpolationTime(clientDelay);
@@ -69,7 +68,7 @@ namespace JamesFrowen.PositionSync
             if (showDebugGui)
             {
                 GUILayout.Label($"ServerTime: {interpolationTime.ServerTime}");
-                GUILayout.Label($"LocalTime: {localTime}");
+                GUILayout.Label($"LocalTime: {interpolationTime.ClientTime}");
                 GUILayout.Label(snapshotBuffer.ToString());
             }
         }
