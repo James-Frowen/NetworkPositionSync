@@ -59,12 +59,17 @@ namespace JamesFrowen.PositionSync
 
         // client
         readonly SnapshotBuffer snapshotBuffer = new SnapshotBuffer();
+        InterpolationTime interpolationTime;
+        private void Start()
+        {
+            interpolationTime = new InterpolationTime(clientSyncInterval);
+        }
 
         void OnGUI()
         {
             if (showDebugGui)
             {
-                GUILayout.Label($"ServerTime: {NetworkTime.time}");
+                GUILayout.Label($"ServerTime: {interpolationTime.ServerTime}");
                 GUILayout.Label($"LocalTime: {localTime}");
                 GUILayout.Label(snapshotBuffer.ToString());
             }
@@ -244,7 +249,7 @@ namespace JamesFrowen.PositionSync
             // this is to make sure we are not sending host's interpolations position as the snapshot insteading sending the client auth snapshot
             TransformState state = IsControlledByServer ? TransformState : _latestState;
             // todo is this correct time?
-            RpcServerSync(state, NetworkTime.time);
+            RpcServerSync(state, Time.unscaledTime);
         }
 
         [ClientRpc]
@@ -268,6 +273,8 @@ namespace JamesFrowen.PositionSync
             // dont apply on local owner
             if (IsLocalClientInControl)
                 return;
+
+            interpolationTime.OnMessage(serverTime);
 
             // buffer will be empty if first snapshot or hasn't moved for a while.
             // in this case we can add a snapshot for (serverTime-syncinterval) for interoplation
@@ -336,12 +343,9 @@ namespace JamesFrowen.PositionSync
         {
             if (snapshotBuffer.IsEmpty) { return; }
 
-            // we want to set local time to the estimated time that the server was when it send the snapshot
-            double serverTime = NetworkTime.time;
-            localTime = serverTime - NetworkTime.rtt / 2;
+            interpolationTime.OnTick(Time.unscaledDeltaTime);
 
-            // we then subtract clientDelay to handle any jitter
-            double snapshotTime = localTime - clientDelay;
+            double snapshotTime = interpolationTime.ClientTime;
             TransformState state = snapshotBuffer.GetLinearInterpolation(snapshotTime);
             if (logger.LogEnabled()) { logger.Log($"p1:{Position.x} p2:{state.position.x} delta:{Position.x - state.position.x}"); }
             Position = state.position;
