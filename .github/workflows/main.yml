@@ -86,7 +86,7 @@ jobs:
               /d:sonar.cs.nunit.reportsPaths=Tests/editmode-results.xml,Tests/playimode-results.xml 
               /d:sonar.cs.opencover.reportsPaths=Tests/workspace-opencov/EditMode/TestCoverageResults_0000.xml,Tests/workspace-opencov/PlayMode/TestCoverageResults_0000.xml
               /d:sonar.exclusions=Assets/Mirror/**/*
-              /d:sonar.inclusions=Assets/JamesFrowen.PositionSync/source/**/*
+              /d:sonar.inclusions=Assets/PositionSync/source/**/*
               /d:sonar.scm.exclusions.disabled=true
         env:
           FrameworkPathOverride: /opt/Unity/Editor/Data/MonoBleedingEdge/
