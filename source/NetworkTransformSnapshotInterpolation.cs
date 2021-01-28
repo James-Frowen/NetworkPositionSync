@@ -38,7 +38,7 @@ namespace JamesFrowen.PositionSync
 
         [SerializeField] bool showDebugGui = false;
 
-        double localTime;
+        float localTime;
 
         /// <summary>
         /// Set when client with authority updates the server
@@ -50,7 +50,6 @@ namespace JamesFrowen.PositionSync
         /// </summary>
         TransformState _latestState;
 
-        // todo does this need to be a double, it uses NetworkTime.time
         float _nextSyncInterval;
 
         // values for HasMoved/Rotated
@@ -62,7 +61,7 @@ namespace JamesFrowen.PositionSync
         InterpolationTime interpolationTime;
         private void Start()
         {
-            interpolationTime = new InterpolationTime(clientSyncInterval);
+            interpolationTime = new InterpolationTime(clientDelay);
         }
 
         void OnGUI()
@@ -143,10 +142,22 @@ namespace JamesFrowen.PositionSync
             get => new TransformState(Position, Rotation);
         }
 
+        float Time
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => UnityEngine.Time.unscaledTime;
+        }
+
+        float DeltaTime
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => UnityEngine.Time.unscaledDeltaTime;
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         bool IsTimeToUpdate()
         {
-            return Time.time > _nextSyncInterval;
+            return Time > _nextSyncInterval;
         }
 
         /// <summary>
@@ -156,7 +167,7 @@ namespace JamesFrowen.PositionSync
         void ClearNeedsUpdate(float interval)
         {
             _needsUpdate = false;
-            _nextSyncInterval = Time.time + interval;
+            _nextSyncInterval = Time + interval;
             lastPosition = Position;
             lastRotation = Rotation;
         }
@@ -249,11 +260,11 @@ namespace JamesFrowen.PositionSync
             // this is to make sure we are not sending host's interpolations position as the snapshot insteading sending the client auth snapshot
             TransformState state = IsControlledByServer ? TransformState : _latestState;
             // todo is this correct time?
-            RpcServerSync(state, Time.unscaledTime);
+            RpcServerSync(state, Time);
         }
 
         [ClientRpc]
-        void RpcServerSync(TransformState state, double time)
+        void RpcServerSync(TransformState state, float time)
         {
             // not host
             // host will have already handled movement in servers code
@@ -268,7 +279,7 @@ namespace JamesFrowen.PositionSync
         /// <para>Adds to buffer for interpolation</para>
         /// </summary>
         /// <param name="state"></param>
-        void AddSnapShotToBuffer(TransformState state, double serverTime)
+        void AddSnapShotToBuffer(TransformState state, float serverTime)
         {
             // dont apply on local owner
             if (IsLocalClientInControl)
@@ -302,11 +313,11 @@ namespace JamesFrowen.PositionSync
         void SendMessageToServer()
         {
             // todo, is this the correct time?
-            CmdClientAuthoritySync(TransformState, NetworkTime.time);
+            CmdClientAuthoritySync(TransformState, Time);
         }
 
         [Command]
-        void CmdClientAuthoritySync(TransformState state, double time)
+        void CmdClientAuthoritySync(TransformState state, float time)
         {
             // this should not happen, Exception to disconnect attacker
             if (!clientAuthority) { throw new InvalidOperationException("Client is not allowed to send updated when clientAuthority is false"); }
@@ -343,16 +354,16 @@ namespace JamesFrowen.PositionSync
         {
             if (snapshotBuffer.IsEmpty) { return; }
 
-            interpolationTime.OnTick(Time.unscaledDeltaTime);
+            interpolationTime.OnTick(DeltaTime);
 
-            double snapshotTime = interpolationTime.ClientTime;
+            float snapshotTime = interpolationTime.ClientTime;
             TransformState state = snapshotBuffer.GetLinearInterpolation(snapshotTime);
             if (logger.LogEnabled()) { logger.Log($"p1:{Position.x} p2:{state.position.x} delta:{Position.x - state.position.x}"); }
             Position = state.position;
             Rotation = state.rotation;
 
             // remove snapshots older than 2times sync interval, they will never be used by Interpolation
-            float removeTime = (float)(snapshotTime - (clientSyncInterval * 2));
+            float removeTime = snapshotTime - clientDelay * 1.5f;
             snapshotBuffer.RemoveOldSnapshots(removeTime);
         }
         #endregion

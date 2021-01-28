@@ -12,43 +12,53 @@ namespace JamesFrowen.PositionSync
         /// <summary>
         /// time client uses to interoplolate
         /// </summary>
-        double clientTime;
+        float clientTime;
+        /// <summary>
+        /// Multiples deltaTime by this scale each frame
+        /// </summary>
         float clientScaleTime;
 
         readonly ExponentialMovingAverage diffAvg;
 
-        readonly float syncInterval = 0.1f;
+        /// <summary>
+        /// goal offset between serverTime and clientTime
+        /// </summary>
         readonly float goalOffset;
 
-        readonly float positiveOffset;
-        readonly float negativeOffset;
+        /// <summary>
+        /// how much above goalOffset diff is allowed to go before changing timescale
+        /// </summary>
+        readonly float positiveThreshold;
+        /// <summary>
+        /// how much below goalOffset diff is allowed to go before changing timescale
+        /// </summary>
+        readonly float negativeThreshold;
 
         readonly float fastScale = 1.01f;
         readonly float normalScale = 1f;
         readonly float slowScale = 0.99f;
 
         // debug
-        double previousServerTime;
+        float previousServerTime;
 
 
-        public double ClientTime
+        public float ClientTime
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => clientTime;
         }
-        public double ServerTime
+        public float ServerTime
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => previousServerTime;
         }
 
-        public InterpolationTime(float syncInterval, int movingAverageCount = 30)
+        public InterpolationTime(float clientDelay, float rangeFromGoal = 4, int movingAverageCount = 30)
         {
-            this.syncInterval = syncInterval;
-            goalOffset = syncInterval * 2;
+            goalOffset = clientDelay;
 
-            positiveOffset = syncInterval * 2;
-            negativeOffset = syncInterval / 2;
+            positiveThreshold = clientDelay / rangeFromGoal;
+            negativeThreshold = -clientDelay / rangeFromGoal;
 
             diffAvg = new ExponentialMovingAverage(movingAverageCount);
         }
@@ -58,7 +68,7 @@ namespace JamesFrowen.PositionSync
             clientTime += deltaTime * clientScaleTime;
         }
 
-        public void OnMessage(double serverTime)
+        public void OnMessage(float serverTime)
         {
             // if first message set client time to server-diff
             if (!intialized)
@@ -73,7 +83,7 @@ namespace JamesFrowen.PositionSync
 
             previousServerTime = serverTime;
 
-            double diff = serverTime - clientTime;
+            float diff = serverTime - clientTime;
             diffAvg.Add(diff);
             // diff is server-client,
             // we want client to be 2 frames behind so that there is always snapshots to interoplate towards
@@ -82,15 +92,15 @@ namespace JamesFrowen.PositionSync
             // if negative then server is behind, => we need to run client slow to not run out of spanshots
 
             // we want diffVsGoal to be as close to 0 as possible
-            double diffVsGoal = diffAvg.Value - goalOffset;
-            if (diffAvg.Value > positiveOffset)
+            float fromGoal = (float)diffAvg.Value - goalOffset;
+            if (fromGoal > positiveThreshold)
                 clientScaleTime = fastScale;
-            else if (diffAvg.Value < negativeOffset)
+            else if (fromGoal < negativeThreshold)
                 clientScaleTime = slowScale;
             else
                 clientScaleTime = normalScale;
 
-            if (logger.LogEnabled()) { logger.Log($"st {serverTime:0.00} ct {clientTime:0.00} diff {diff * 1000:0.0}, wanted:{diffVsGoal * 1000:0.0}, scale:{clientScaleTime}"); }
+            if (logger.LogEnabled()) { logger.Log($"st {serverTime:0.00} ct {clientTime:0.00} diff {diff * 1000:0.0}, wanted:{fromGoal * 1000:0.0}, scale:{clientScaleTime}"); }
         }
     }
 }
