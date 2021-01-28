@@ -6,7 +6,8 @@ using RangeAttribute = NUnit.Framework.RangeAttribute;
 
 namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
 {
-    public class IsEmpty
+    [Category("NetworkPositionSync")]
+    public class SnapshotBuffer_IsEmpty
     {
         [Test]
         public void ShouldBeTrueOnNewBuffer()
@@ -33,7 +34,8 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
         }
     }
 
-    public class RemoveSnapshots
+    [Category("NetworkPositionSync")]
+    public class SnapshotBuffer_RemoveSnapshots
     {
         [Test]
         public void ShouldOnlyRemoveOld()
@@ -51,7 +53,8 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
         }
     }
 
-    public class AddSnapshot
+    [Category("NetworkPositionSync")]
+    public class SnapshotBuffer_AddSnapshot
     {
         [Test]
         public void ShouldIncreaseCount([Range(1, 5)] int count)
@@ -78,7 +81,8 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
         }
     }
 
-    public class GetInterpolation
+    [Category("NetworkPositionSync")]
+    public class SnapshotBuffer_GetInterpolation
     {
         private ILogger logger;
         private LogType oldFilterLogType;
@@ -171,7 +175,8 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
         }
     }
 
-    public class DebugToString
+    [Category("NetworkPositionSync")]
+    public class SnapshotBuffer_DebugToString
     {
         [Test]
         public void ShouldSayEmptyBuffer()

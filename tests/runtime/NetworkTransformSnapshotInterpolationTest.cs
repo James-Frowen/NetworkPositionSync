@@ -8,6 +8,7 @@ using UnityEngine.TestTools;
 
 namespace JamesFrowen.PositionSync.Tests.Runtime
 {
+    [Category("NetworkPositionSync")]
     public class NetworkTransformSnapshotInterpolationTest : HostSetup
     {
         readonly List<GameObject> spawned = new List<GameObject>();
