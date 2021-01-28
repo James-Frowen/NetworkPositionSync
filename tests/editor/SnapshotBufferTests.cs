@@ -1,3 +1,4 @@
+using System;
 using Mirror;
 using NUnit.Framework;
 using UnityEngine;
@@ -76,8 +77,9 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
 
             SnapshotBuffer buffer = new SnapshotBuffer();
             buffer.AddSnapShot(default, time1);
-            LogAssert.Expect(LogType.Error, $"Adding Snapshot to buffer out of order, last t={time1:0.000}, new t={time2:0.000}");
-            buffer.AddSnapShot(default, time2);
+
+            ArgumentException exception = Assert.Throws<ArgumentException>(() => buffer.AddSnapShot(default, time2));
+            Assert.That(exception, Has.Message.EqualTo($"Can not add Snapshot to buffer out of order, last t={time1:0.000}, new t={time2:0.000}"));
         }
     }
 
@@ -106,9 +108,8 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
         {
             SnapshotBuffer buffer = new SnapshotBuffer();
 
-            LogAssert.Expect(LogType.Error, "No snapshots, returning default");
-            TransformState value = buffer.GetLinearInterpolation(default);
-            Assert.That(value, Is.EqualTo(default(TransformState)));
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => buffer.GetLinearInterpolation(default));
+            Assert.That(exception, Has.Message.EqualTo("No snapshots in buffer"));
         }
 
         [Test]
