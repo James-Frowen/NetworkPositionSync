@@ -1,7 +1,9 @@
 {
     "name": "JamesFrowen.PositionSync",
     "references": [
-        "Mirror"
+        "Mirror",
+        "JamesFrowen.BitPacking",
+        "JamesFrowen.ScriptableVariables"
     ],
     "optionalUnityReferences": [],
     "includePlatforms": [],
