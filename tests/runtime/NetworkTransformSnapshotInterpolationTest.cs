@@ -1,8 +1,8 @@
-using System.Collections;
-using System.Collections.Generic;
 using Mirror;
 using Mirror.Tests.Runtime;
 using NUnit.Framework;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.TestTools;
 
@@ -20,16 +20,16 @@ namespace JamesFrowen.PositionSync.Tests.Runtime
 
         protected override void afterStartHost()
         {
-            GameObject serverGO = new GameObject("server object");
-            GameObject clientGO = new GameObject("client object");
-            spawned.Add(serverGO);
-            spawned.Add(clientGO);
+            var serverGO = new GameObject("server object");
+            var clientGO = new GameObject("client object");
+            this.spawned.Add(serverGO);
+            this.spawned.Add(clientGO);
 
-            NetworkIdentity serverNI = serverGO.AddComponent<NetworkIdentity>();
-            NetworkIdentity clientNI = clientGO.AddComponent<NetworkIdentity>();
+            var serverNI = serverGO.AddComponent<NetworkIdentity>();
+            var clientNI = clientGO.AddComponent<NetworkIdentity>();
 
-            serverNT = serverGO.AddComponent<SyncPositionBehaviour>();
-            clientNT = clientGO.AddComponent<SyncPositionBehaviour>();
+            this.serverNT = serverGO.AddComponent<SyncPositionBehaviour>();
+            this.clientNT = clientGO.AddComponent<SyncPositionBehaviour>();
 
             // set up Identitys so that server object can send message to client object in host mode
             FakeSpawnServerClientIdentity(serverNI, clientNI);
@@ -41,7 +41,7 @@ namespace JamesFrowen.PositionSync.Tests.Runtime
 
         protected override void beforeStopHost()
         {
-            foreach (GameObject obj in spawned)
+            foreach (var obj in this.spawned)
             {
                 Object.Destroy(obj);
             }
@@ -50,20 +50,20 @@ namespace JamesFrowen.PositionSync.Tests.Runtime
         [UnityTest]
         public IEnumerator SyncPositionFromServerToClient()
         {
-            Vector3[] positions = new Vector3[] {
+            var positions = new Vector3[] {
                 new Vector3(1, 2, 3),
                 new Vector3(2, 2, 3),
                 new Vector3(2, 3, 5),
                 new Vector3(2, 3, 5),
             };
 
-            foreach (Vector3 position in positions)
+            foreach (var position in positions)
             {
-                serverNT.transform.position = position;
+                this.serverNT.transform.position = position;
                 // wait more than needed to check end position is reached
                 yield return new WaitForSeconds(0.5f);
 
-                Assert.That(clientNT.transform.position, Is.EqualTo(position));
+                Assert.That(this.clientNT.transform.position, Is.EqualTo(position));
             }
         }
     }
