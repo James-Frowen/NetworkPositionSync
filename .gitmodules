@@ -1,0 +1,6 @@
+[submodule "modules/BitPacking"]
+	path = modules/BitPacking
+	url = git@github.com:James-Frowen/BitPacking.git
+[submodule "modules/ScriptableVariables"]
+	path = modules/ScriptableVariables
+	url = git@github.com:James-Frowen/ScriptableVariables.git
