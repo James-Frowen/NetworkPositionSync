@@ -5,12 +5,17 @@ using UnityEngine;
 
 namespace JamesFrowen.PositionSync
 {
-    [AddComponentMenu("Network/NetworkTransformSnapshotInterpolation")]
-    // placeholder name, can be renamed when old component gets removed
-    // when renaming name sure GUID of component stays the same
-    public class NetworkTransformSnapshotInterpolation : NetworkBehaviour
+    /// <summary>
+    /// Behaviour to sync position and rotation, This behaviour is used by <see cref="SyncPositionSystem"/> in order to sync
+    /// <para>for standalone version see <see cref="SyncPositionBehaviourStandalone"/></para>
+    /// </summary>
+    [AddComponentMenu("Network/SyncPosition/Behaviour")]
+    public class SyncPositionBehaviour : NetworkBehaviour
     {
-        static readonly ILogger logger = LogFactory.GetLogger<NetworkTransformSnapshotInterpolation>(LogType.Error);
+        static readonly ILogger logger = LogFactory.GetLogger<SyncPositionBehaviour>(LogType.Error);
+
+        [Header("References")]
+        [SerializeField] SyncPositionBehaviourRuntimeSet _behaviourSet;
 
         [Tooltip("Which transform to sync")]
         [SerializeField] Transform target;

@@ -13,8 +13,8 @@ namespace JamesFrowen.PositionSync.Tests.Runtime
     {
         readonly List<GameObject> spawned = new List<GameObject>();
 
-        private NetworkTransformSnapshotInterpolation serverNT;
-        private NetworkTransformSnapshotInterpolation clientNT;
+        private SyncPositionBehaviour serverNT;
+        private SyncPositionBehaviour clientNT;
 
         protected override bool AutoAddPlayer => false;
 
@@ -28,8 +28,8 @@ namespace JamesFrowen.PositionSync.Tests.Runtime
             NetworkIdentity serverNI = serverGO.AddComponent<NetworkIdentity>();
             NetworkIdentity clientNI = clientGO.AddComponent<NetworkIdentity>();
 
-            serverNT = serverGO.AddComponent<NetworkTransformSnapshotInterpolation>();
-            clientNT = clientGO.AddComponent<NetworkTransformSnapshotInterpolation>();
+            serverNT = serverGO.AddComponent<SyncPositionBehaviour>();
+            clientNT = clientGO.AddComponent<SyncPositionBehaviour>();
 
             // set up Identitys so that server object can send message to client object in host mode
             FakeSpawnServerClientIdentity(serverNI, clientNI);
