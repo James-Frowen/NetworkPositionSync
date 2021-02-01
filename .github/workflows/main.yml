@@ -121,11 +121,12 @@ jobs:
           LICENSE $TARGET_PATH/LICENSE 
           README.md $TARGET_PATH/README.md
           modules/BitPacking/JamesFrowen.BitPacking/Source $TARGET_PATH/modules/BitPacking
-          modules/BitPacking/JamesFrowen.BitPacking/README.md $TARGET_PATH/modules/BitPacking/README.md
-          modules/BitPacking/JamesFrowen.BitPacking/LICENSE $TARGET_PATH/modules/BitPacking/LICENSE
+          modules/BitPacking/README.md $TARGET_PATH/modules/BitPacking/README.md
           modules/ScriptableVariables/source $TARGET_PATH/modules/ScriptableVariables
           modules/ScriptableVariables/README.md $TARGET_PATH/modules/ScriptableVariables/README.md
-          modules/ScriptableVariables/LICENSE $TARGET_PATH/modules/ScriptableVariables/LICENSE
+          
+        # modules/BitPacking/LICENSE $TARGET_PATH/modules/BitPacking/LICENSE
+        # modules/ScriptableVariables/LICENSE $TARGET_PATH/modules/ScriptableVariables/LICENSE
 
       - uses: actions/upload-artifact@v1
         with:
