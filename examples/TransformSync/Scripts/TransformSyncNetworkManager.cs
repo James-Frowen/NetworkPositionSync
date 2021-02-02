@@ -8,6 +8,7 @@ namespace JamesFrowen.PositionSync.Example
     {
         [Header("References")]
         [SerializeField] SyncPositionSystem system;
+        [SerializeField] SyncPositionBehaviourRuntimeDictionary behaviours;
 
         [Header("Moving objects")]
         [SerializeField] int cubeCount = 10;
@@ -41,12 +42,19 @@ namespace JamesFrowen.PositionSync.Example
         public override void OnStopClient()
         {
             this.system.UnregisterHandlers();
+            this.behaviours.Clear();
         }
         public override void OnStopServer()
         {
             this.system.UnregisterHandlers();
+            this.behaviours.Clear();
         }
 
+        public override void OnApplicationQuit()
+        {
+            base.OnApplicationQuit();
+            this.behaviours.Clear();
+        }
 
         private void OnGUI()
         {

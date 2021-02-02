@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -10,18 +11,22 @@ namespace JamesFrowen.PositionSync
     {
         public event ObjectSet<ISyncPositionBehaviour>.OnChange onChange;
 
-        [SerializeField] protected Dictionary<uint, ISyncPositionBehaviour> _items = new Dictionary<uint, ISyncPositionBehaviour>();
+        [NonSerialized] Dictionary<uint, ISyncPositionBehaviour> _items = new Dictionary<uint, ISyncPositionBehaviour>();
+
+        public void Clear() => this._items.Clear();
 
         public void Add(ISyncPositionBehaviour thing)
         {
             var netId = thing.netId;
             this._items.Add(netId, thing);
+            onChange?.Invoke(thing, true);
         }
 
         public void Remove(ISyncPositionBehaviour thing)
         {
             var netId = thing.netId;
             this._items.Remove(netId);
+            onChange?.Invoke(thing, false);
         }
 
         public bool Contains(ISyncPositionBehaviour thing)
