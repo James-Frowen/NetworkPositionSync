@@ -9,6 +9,6 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7e8e73de549451944b245eb74121012c, type: 3}
-  m_Name: ExampleTransformSystemRuntimeReference
+  m_Script: {fileID: 11500000, guid: d15cf0721607e9c4f9058200801157fa, type: 3}
+  m_Name: ExampleSyncPositionBehaviourSet
   m_EditorClassIdentifier: 
