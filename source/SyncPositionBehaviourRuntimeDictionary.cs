@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace JamesFrowen.PositionSync
 {
-    [CreateAssetMenu(menuName = "ScriptableVariables/Runtime Sets/SyncPositionBehaviour")]
+    [CreateAssetMenu(menuName = "PositionSync/Behaviour Set")]
     // todo make runtime dictionary
     public class SyncPositionBehaviourRuntimeDictionary : ScriptableObject, IEnumerable<ISyncPositionBehaviour>
     {

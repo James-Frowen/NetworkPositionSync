@@ -3,7 +3,6 @@ using Mirror;
 using System;
 using UnityEngine;
 
-
 namespace JamesFrowen.PositionSync
 {
     [AddComponentMenu("Network/SyncPosition/System")]
@@ -15,79 +14,33 @@ namespace JamesFrowen.PositionSync
 
         [Header("Reference")]
         [SerializeField] SyncPositionBehaviourRuntimeDictionary _behaviours;
+        [SerializeField] SyncPositionPacker packer;
 
         [Header("Sync")]
         [Tooltip("How often 1 behaviour should update")]
         public float syncInterval = 0.1f;
         [Tooltip("Check if behaviours need update every frame, If false then checks every syncInterval")]
         public bool checkEveryFrame = true;
-
-        [Header("timer Compression")]
-        [SerializeField] float maxTime = 60 * 60 * 24;
-        [SerializeField] float timePrecision = 1 / 1000f;
-
-        [Header("Id Compression")]
-        [SerializeField] int smallBitCount = 6;
-        [SerializeField] int mediumBitCount = 12;
-        [SerializeField] int largeBitCount = 18;
-
-        [Header("Position Compression")]
-        [SerializeField] Vector3 min = Vector3.one * -100;
-        [SerializeField] Vector3 max = Vector3.one * 100;
-        [SerializeField] float precision = 0.01f;
-
-        [Header("Rotation Compression")]
-        [SerializeField] int bitCount = 9;
-
-
-        [Header("Position Debug And Gizmo")]
-        // todo replace these serialized fields with custom editor
-        [SerializeField] private bool drawGizmo;
-        [SerializeField] private Color gizmoColor;
-        [Tooltip("readonly")]
-        [SerializeField] private int _bitCount;
-        [Tooltip("readonly")]
-        [SerializeField] private Vector3Int _bitCountAxis;
-        [Tooltip("readonly")]
-        [SerializeField] private int _byteCount;
-
-
-        [NonSerialized] internal FloatPacker timePacker;
-        [NonSerialized] internal UIntVariablePacker idPacker;
-        [NonSerialized] internal PositionPacker positionPacker;
-        [NonSerialized] internal QuaternionPacker rotationPacker;
-
+        [Tooltip("Skips Visiblity and sends position to all ready connections")]
+        public bool sendToAll = true;
 
         [NonSerialized] float nextSyncInterval;
 
-        private void Awake()
-        {
-            // time precision 1000 times more than interval
-            this.timePacker = new FloatPacker(0, this.maxTime, this.timePrecision);
-            this.idPacker = new UIntVariablePacker(this.smallBitCount, this.mediumBitCount, this.largeBitCount);
-            this.positionPacker = new PositionPacker(this.min, this.max, this.precision);
-            this.rotationPacker = new QuaternionPacker(this.bitCount);
-        }
 
         private void OnValidate()
         {
-            this.positionPacker = new PositionPacker(this.min, this.max, this.precision);
-            this._bitCount = this.positionPacker.bitCount;
-            this._bitCountAxis = this.positionPacker.BitCountAxis;
-            this._byteCount = Mathf.CeilToInt(this._bitCount / 8f);
+            if (!this.sendToAll)
+            {
+                this.sendToAll = true;
+                UnityEngine.Debug.LogWarning("sendToAll disabled is not implemented yet");
+            }
         }
 
-#if UNITY_EDITOR
         private void OnDrawGizmos()
         {
-            if (!this.drawGizmo) { return; }
-            Gizmos.color = this.gizmoColor;
-            Bounds bounds = default;
-            bounds.min = this.min;
-            bounds.max = this.max;
-            Gizmos.DrawWireCube(bounds.center, bounds.size);
+            this.packer.DrawGizmo();
+
         }
-#endif
 
         public void RegisterHandlers()
         {
@@ -161,7 +114,7 @@ namespace JamesFrowen.PositionSync
 
         internal bool PackBehaviours(BitWriter bitWriter, float time)
         {
-            this.timePacker.Pack(bitWriter, time);
+            this.packer.PackTime(bitWriter, time);
             var anyNeedUpdate = false;
             foreach (var behaviour in this._behaviours)
             {
@@ -170,12 +123,7 @@ namespace JamesFrowen.PositionSync
 
                 anyNeedUpdate = true;
 
-                var id = behaviour.netId;
-                var state = behaviour.State;
-
-                this.idPacker.Pack(bitWriter, id);
-                this.positionPacker.Pack(bitWriter, state.position);
-                this.rotationPacker.Pack(bitWriter, state.rotation);
+                this.packer.PackNext(bitWriter, behaviour);
 
                 // todo handle client authority updates better
                 behaviour.ClearNeedsUpdate(this.syncInterval);
@@ -188,13 +136,11 @@ namespace JamesFrowen.PositionSync
         {
             var count = msg.payload.Count;
             var bitReader = new BitReader(msg.payload);
-            var time = this.timePacker.Unpack(bitReader);
+            var time = this.packer.UnpackTime(bitReader);
 
             while (bitReader.Position < count)
             {
-                var id = this.idPacker.Unpack(bitReader);
-                var pos = this.positionPacker.Unpack(bitReader);
-                var rot = this.rotationPacker.Unpack(bitReader);
+                this.packer.UnpackNext(bitReader, out var id, out var pos, out var rot);
 
                 if (this._behaviours.TryGet(id, out var behaviour))
                 {
@@ -209,27 +155,7 @@ namespace JamesFrowen.PositionSync
 
 
         #region Sync Client Auth -> Server
-        public void SendMessageToServer(ISyncPositionBehaviour behaviour)
-        {
-            // todo dont create new buffer each time
-            var bitWriter = new BitWriter(32);
 
-            var id = behaviour.netId;
-            var state = behaviour.State;
-
-            this.idPacker.Pack(bitWriter, id);
-            this.positionPacker.Pack(bitWriter, state.position);
-            this.rotationPacker.Pack(bitWriter, state.rotation);
-
-            behaviour.ClearNeedsUpdate(this.syncInterval);
-
-            bitWriter.Flush();
-
-            NetworkClient.Send(new NetworkPositionSingleMessage
-            {
-                payload = bitWriter.ToArraySegment()
-            });
-        }
 
         /// <summary>
         /// Position from client to server
@@ -238,14 +164,20 @@ namespace JamesFrowen.PositionSync
         /// <param name="arg2"></param>
         internal void ServerHandleNetworkPositionMessage(NetworkConnection _conn, NetworkPositionSingleMessage msg)
         {
+            // todo make sure has auth, and handle host mode
+            /*
+            // this should not happen, Exception to disconnect attacker
+            if (!this.clientAuthority) { throw new InvalidOperationException("Client is not allowed to send updated when clientAuthority is false"); }
+            this._latestState = state;
+            */
+
             var bitReader = new BitReader(msg.payload);
-            var id = this.idPacker.Unpack(bitReader);
-            var pos = this.positionPacker.Unpack(bitReader);
-            var rot = this.rotationPacker.Unpack(bitReader);
+            var time = this.packer.UnpackTime(bitReader);
+            this.packer.UnpackNext(bitReader, out var id, out var pos, out var rot);
 
             if (this._behaviours.TryGet(id, out var behaviour))
             {
-                behaviour.ApplyOnServer(new TransformState(pos, rot));
+                behaviour.ApplyOnServer(new TransformState(pos, rot), time);
             }
 
             Debug.Assert(bitReader.Position == msg.payload.Count, "should have read exact amount");
@@ -277,7 +209,7 @@ namespace JamesFrowen.PositionSync
         /// Applies position on server from client authority
         /// </summary>
         /// <param name="transformState"></param>
-        void ApplyOnServer(TransformState transformState);
+        void ApplyOnServer(TransformState state, float time);
         #endregion
 
         #region client methods
@@ -286,7 +218,7 @@ namespace JamesFrowen.PositionSync
         /// </summary>
         /// <param name="transformState"></param>
         /// <param name="time"></param>
-        void ApplyOnClient(TransformState transformState, float time);
+        void ApplyOnClient(TransformState state, float time);
         #endregion
     }
 

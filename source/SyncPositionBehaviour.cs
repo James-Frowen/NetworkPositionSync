@@ -1,3 +1,4 @@
+using JamesFrowen.BitPacking;
 using Mirror;
 using System;
 using System.Runtime.CompilerServices;
@@ -10,12 +11,51 @@ namespace JamesFrowen.PositionSync
     /// <para>for standalone version see <see cref="SyncPositionBehaviourStandalone"/></para>
     /// </summary>
     [AddComponentMenu("Network/SyncPosition/Behaviour")]
-    public class SyncPositionBehaviour : NetworkBehaviour
+    public class SyncPositionBehaviour : NetworkBehaviour, ISyncPositionBehaviour
     {
+        #region ISyncPositionBehaviour
+        bool ISyncPositionBehaviour.NeedsUpdate() => this.ServerNeedsToSendUpdate();
+
+        void ISyncPositionBehaviour.ClearNeedsUpdate(float syncInterval) => this.ClearNeedsUpdate(syncInterval);
+
+        void ISyncPositionBehaviour.ApplyOnServer(TransformState state, float time)
+        {
+            // this should not happen, Exception to disconnect attacker
+            if (!this.clientAuthority) { throw new InvalidOperationException("Client is not allowed to send updated when clientAuthority is false"); }
+
+            this._latestState = state;
+
+            // if host apply using interpolation otherwise apply exact 
+            if (this.isClient)
+            {
+                this.AddSnapShotToBuffer(state, time);
+            }
+            else
+            {
+                this.ApplyStateNoInterpolation(state);
+            }
+        }
+
+        void ISyncPositionBehaviour.ApplyOnClient(TransformState state, float time)
+        {
+            // not host
+            // host will have already handled movement in servers code
+            if (this.isServer)
+                return;
+
+            this.AddSnapShotToBuffer(state, time);
+        }
+        #endregion
+
+
+
+
         static readonly ILogger logger = LogFactory.GetLogger<SyncPositionBehaviour>(LogType.Error);
 
         [Header("References")]
         [SerializeField] SyncPositionBehaviourRuntimeDictionary _behaviourSet;
+        [SerializeField] SyncPositionPacker packer;
+
 
         [Tooltip("Which transform to sync")]
         [SerializeField] Transform target;
@@ -157,6 +197,7 @@ namespace JamesFrowen.PositionSync
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => UnityEngine.Time.unscaledDeltaTime;
         }
+        TransformState ISyncPositionBehaviour.State => throw new NotImplementedException();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         bool IsTimeToUpdate()
@@ -210,11 +251,6 @@ namespace JamesFrowen.PositionSync
 
         void Update()
         {
-            if (this.isServer)
-            {
-                this.ServerSyncUpdate();
-            }
-
             if (this.isClient)
             {
                 if (this.IsLocalClientInControl)
@@ -229,15 +265,6 @@ namespace JamesFrowen.PositionSync
         }
 
         #region Server Sync Update
-        void ServerSyncUpdate()
-        {
-            if (this.ServerNeedsToSendUpdate())
-            {
-                this.SendMessageToClient();
-                this.ClearNeedsUpdate(this.clientSyncInterval);
-            }
-        }
-
         /// <summary>
         /// Checks if object needs syncing to clients
         /// <para>Called on server</para>
@@ -255,27 +282,6 @@ namespace JamesFrowen.PositionSync
                 // todo do we need a check for attackers sending too many snapshots?
                 return this._needsUpdate;
             }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void SendMessageToClient()
-        {
-            // if client has send update, then we want to use the state it gave us
-            // this is to make sure we are not sending host's interpolations position as the snapshot insteading sending the client auth snapshot
-            var state = this.IsControlledByServer ? this.TransformState : this._latestState;
-            // todo is this correct time?
-            this.RpcServerSync(state, this.Time);
-        }
-
-        [ClientRpc]
-        void RpcServerSync(TransformState state, float time)
-        {
-            // not host
-            // host will have already handled movement in servers code
-            if (this.isServer)
-                return;
-
-            this.AddSnapShotToBuffer(state, time);
         }
 
         /// <summary>
@@ -316,27 +322,16 @@ namespace JamesFrowen.PositionSync
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void SendMessageToServer()
         {
-            // todo, is this the correct time?
-            this.CmdClientAuthoritySync(this.TransformState, this.Time);
-        }
+            // todo dont create new buffer each time
+            var bitWriter = new BitWriter(64);
+            this.packer.PackTime(bitWriter, (float)NetworkTime.time);
+            this.packer.PackNext(bitWriter, this);
+            bitWriter.Flush();
 
-        [Command]
-        void CmdClientAuthoritySync(TransformState state, float time)
-        {
-            // this should not happen, Exception to disconnect attacker
-            if (!this.clientAuthority) { throw new InvalidOperationException("Client is not allowed to send updated when clientAuthority is false"); }
-
-            this._latestState = state;
-
-            // if host apply using interpolation otherwise apply exact 
-            if (this.isClient)
+            NetworkClient.Send(new NetworkPositionSingleMessage
             {
-                this.AddSnapShotToBuffer(state, time);
-            }
-            else
-            {
-                this.ApplyStateNoInterpolation(state);
-            }
+                payload = bitWriter.ToArraySegment()
+            });
         }
 
         /// <summary>
