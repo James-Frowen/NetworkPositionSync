@@ -164,13 +164,6 @@ namespace JamesFrowen.PositionSync
         /// <param name="arg2"></param>
         internal void ServerHandleNetworkPositionMessage(NetworkConnection _conn, NetworkPositionSingleMessage msg)
         {
-            // todo make sure has auth, and handle host mode
-            /*
-            // this should not happen, Exception to disconnect attacker
-            if (!this.clientAuthority) { throw new InvalidOperationException("Client is not allowed to send updated when clientAuthority is false"); }
-            this._latestState = state;
-            */
-
             var bitReader = new BitReader(msg.payload);
             var time = this.packer.UnpackTime(bitReader);
             this.packer.UnpackNext(bitReader, out var id, out var pos, out var rot);
