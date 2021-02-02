@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace JamesFrowen.PositionSync
 {
-    [AddComponentMenu("Network/SyncPosition/System")]
+    [AddComponentMenu("Network/SyncPosition/SyncPositionSystem")]
     public class SyncPositionSystem : MonoBehaviour
     {
         // todo make this work with network Visibility
@@ -38,8 +38,8 @@ namespace JamesFrowen.PositionSync
 
         private void OnDrawGizmos()
         {
-            this.packer.DrawGizmo();
-
+            if (this.packer != null)
+                this.packer.DrawGizmo();
         }
 
         public void RegisterHandlers()

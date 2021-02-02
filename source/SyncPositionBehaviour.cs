@@ -10,7 +10,7 @@ namespace JamesFrowen.PositionSync
     /// Behaviour to sync position and rotation, This behaviour is used by <see cref="SyncPositionSystem"/> in order to sync
     /// <para>for standalone version see <see cref="SyncPositionBehaviourStandalone"/></para>
     /// </summary>
-    [AddComponentMenu("Network/SyncPosition/Behaviour")]
+    [AddComponentMenu("Network/SyncPosition/SyncPositionBehaviour")]
     public class SyncPositionBehaviour : NetworkBehaviour, ISyncPositionBehaviour
     {
         #region ISyncPositionBehaviour
