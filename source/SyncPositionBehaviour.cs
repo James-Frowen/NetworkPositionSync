@@ -15,7 +15,7 @@ namespace JamesFrowen.PositionSync
         static readonly ILogger logger = LogFactory.GetLogger<SyncPositionBehaviour>(LogType.Error);
 
         [Header("References")]
-        [SerializeField] SyncPositionBehaviourRuntimeSet _behaviourSet;
+        [SerializeField] SyncPositionBehaviourRuntimeDictionary _behaviourSet;
 
         [Tooltip("Which transform to sync")]
         [SerializeField] Transform target;
