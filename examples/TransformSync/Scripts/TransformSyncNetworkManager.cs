@@ -40,11 +40,11 @@ namespace JamesFrowen.PositionSync.Example
 
         public override void OnStopClient()
         {
-            this.system.RegisterHandlers();
+            this.system.UnregisterHandlers();
         }
         public override void OnStopServer()
         {
-            this.system.RegisterHandlers();
+            this.system.UnregisterHandlers();
         }
 
 
