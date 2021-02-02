@@ -42,7 +42,7 @@ namespace JamesFrowen.PositionSync
         [NonSerialized] internal PositionPacker positionPacker;
         [NonSerialized] internal QuaternionPacker rotationPacker;
 
-        private void Awake()
+        private void OnEnable()
         {
             // time precision 1000 times more than interval
             this.timePacker = new FloatPacker(0, this.maxTime, this.timePrecision);
@@ -88,7 +88,7 @@ namespace JamesFrowen.PositionSync
 
         public float UnpackTime(BitReader reader)
         {
-            throw new NotImplementedException();
+            return this.timePacker.Unpack(reader);
         }
 
         public void UnpackNext(BitReader bitReader, out uint id, out Vector3 pos, out Quaternion rot)
