@@ -248,6 +248,24 @@ namespace JamesFrowen.PositionSync
             return rotated;
         }
 
+
+        public override void OnStartClient()
+        {
+            this._behaviourSet.Add(this);
+        }
+        public override void OnStartServer()
+        {
+            this._behaviourSet.Add(this);
+        }
+        public override void OnStopClient()
+        {
+            this._behaviourSet.Remove(this);
+        }
+        public override void OnStopServer()
+        {
+            this._behaviourSet.Remove(this);
+        }
+
         void Update()
         {
             if (this.isClient)
