@@ -180,7 +180,7 @@ namespace JamesFrowen.PositionSync
             }
         }
 
-        TransformState TransformState
+        public TransformState TransformState
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => new TransformState(this.Position, this.Rotation);
@@ -197,7 +197,6 @@ namespace JamesFrowen.PositionSync
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => UnityEngine.Time.unscaledDeltaTime;
         }
-        TransformState ISyncPositionBehaviour.State => throw new NotImplementedException();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         bool IsTimeToUpdate()

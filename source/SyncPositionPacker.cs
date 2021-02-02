@@ -79,7 +79,7 @@ namespace JamesFrowen.PositionSync
         public void PackNext(BitWriter writer, ISyncPositionBehaviour behaviour)
         {
             var id = behaviour.netId;
-            var state = behaviour.State;
+            var state = behaviour.TransformState;
 
             this.idPacker.Pack(writer, id);
             this.positionPacker.Pack(writer, state.position);

@@ -189,7 +189,7 @@ namespace JamesFrowen.PositionSync
     {
         #region properties
         uint netId { get; }
-        TransformState State { get; }
+        TransformState TransformState { get; }
         #endregion
 
         #region server methods
