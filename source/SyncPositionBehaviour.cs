@@ -103,11 +103,6 @@ namespace JamesFrowen.PositionSync
         readonly SnapshotBuffer snapshotBuffer = new SnapshotBuffer();
         InterpolationTime interpolationTime;
 
-        private void Start()
-        {
-            this.interpolationTime = new InterpolationTime(this.clientDelay);
-        }
-
         void OnGUI()
         {
             if (this.showDebugGui)
@@ -251,6 +246,7 @@ namespace JamesFrowen.PositionSync
 
         public override void OnStartClient()
         {
+            this.interpolationTime = new InterpolationTime(this.clientDelay);
             this._behaviourSet.Add(this);
         }
         public override void OnStartServer()
