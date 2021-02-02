@@ -1,8 +1,8 @@
+using Mirror;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text;
-using Mirror;
 using UnityEngine;
 
 namespace JamesFrowen.PositionSync
@@ -20,7 +20,7 @@ namespace JamesFrowen.PositionSync
 
         public override string ToString()
         {
-            return $"[{position}, {rotation}]";
+            return $"[{this.position}, {this.rotation}]";
         }
     }
 
@@ -34,8 +34,8 @@ namespace JamesFrowen.PositionSync
 
         public static TransformState ReadTransformState(this NetworkReader reader)
         {
-            Vector3 position = reader.ReadVector3();
-            Quaternion rotation = Compression.DecompressQuaternion(reader.ReadUInt32());
+            var position = reader.ReadVector3();
+            var rotation = Compression.DecompressQuaternion(reader.ReadUInt32());
 
             return new TransformState(position, rotation);
         }
@@ -64,33 +64,33 @@ namespace JamesFrowen.PositionSync
         public bool IsEmpty
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => buffer.Count == 0;
+            get => this.buffer.Count == 0;
         }
         public int SnapshotCount
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => buffer.Count;
+            get => this.buffer.Count;
         }
 
         Snapshot First
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => buffer[0];
+            get => this.buffer[0];
         }
         Snapshot Last
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => buffer[buffer.Count - 1];
+            get => this.buffer[this.buffer.Count - 1];
         }
 
         public void AddSnapShot(TransformState state, double serverTime)
         {
-            if (!IsEmpty && serverTime < Last.time)
+            if (!this.IsEmpty && serverTime < this.Last.time)
             {
-                throw new ArgumentException($"Can not add Snapshot to buffer out of order, last t={Last.time:0.000}, new t={serverTime:0.000}");
+                throw new ArgumentException($"Can not add Snapshot to buffer out of order, last t={this.Last.time:0.000}, new t={serverTime:0.000}");
             }
 
-            buffer.Add(new Snapshot(state, serverTime));
+            this.buffer.Add(new Snapshot(state, serverTime));
         }
 
         /// <summary>
@@ -101,58 +101,58 @@ namespace JamesFrowen.PositionSync
         /// <returns></returns>
         public TransformState GetLinearInterpolation(double now)
         {
-            if (buffer.Count == 0)
+            if (this.buffer.Count == 0)
             {
                 throw new InvalidOperationException("No snapshots in buffer");
             }
 
             // first snapshot
-            if (buffer.Count == 1)
+            if (this.buffer.Count == 1)
             {
                 if (logger.LogEnabled()) logger.Log("First snapshot");
 
-                return First.state;
+                return this.First.state;
             }
 
             // if first snapshot is after now, there is no "from", so return same as first snapshot
-            if (First.time > now)
+            if (this.First.time > now)
             {
-                if (logger.LogEnabled()) logger.Log($"No snapshots for t={now:0.000}, using earliest t={buffer[0].time:0.000}");
+                if (logger.LogEnabled()) logger.Log($"No snapshots for t={now:0.000}, using earliest t={this.buffer[0].time:0.000}");
 
-                return First.state;
+                return this.First.state;
             }
 
             // if last snapshot is before now, there is no "to", so return last snapshot
             // this can happen if server hasn't sent new data
             // there could be no new data from either lag or because object hasn't moved
-            if (Last.time < now)
+            if (this.Last.time < now)
             {
-                if (logger.WarnEnabled()) logger.LogWarning($"No snapshots for t={now:0.000}, using first t={buffer[0].time:0.000} last t={Last.time:0.000}");
+                if (logger.WarnEnabled()) logger.LogWarning($"No snapshots for t={now:0.000}, using first t={this.buffer[0].time:0.000} last t={this.Last.time:0.000}");
 
-                return Last.state;
+                return this.Last.state;
             }
 
             // edge cases are returned about, if code gets to this for loop then a valid from/to should exist
-            for (int i = 0; i < buffer.Count - 1; i++)
+            for (var i = 0; i < this.buffer.Count - 1; i++)
             {
-                Snapshot from = buffer[i];
-                Snapshot to = buffer[i + 1];
-                double fromTime = buffer[i].time;
-                double toTime = buffer[i + 1].time;
+                var from = this.buffer[i];
+                var to = this.buffer[i + 1];
+                var fromTime = this.buffer[i].time;
+                var toTime = this.buffer[i + 1].time;
 
                 // if between times, then use from/to
                 if (fromTime <= now && now <= toTime)
                 {
-                    float alpha = (float)Clamp01((now - fromTime) / (toTime - fromTime));
+                    var alpha = (float)this.Clamp01((now - fromTime) / (toTime - fromTime));
                     if (logger.LogEnabled()) { logger.Log($"alpha:{alpha:0.000}"); }
-                    Vector3 pos = Vector3.Lerp(from.state.position, to.state.position, alpha);
-                    Quaternion rot = Quaternion.Slerp(from.state.rotation, to.state.rotation, alpha);
+                    var pos = Vector3.Lerp(from.state.position, to.state.position, alpha);
+                    var rot = Quaternion.Slerp(from.state.rotation, to.state.rotation, alpha);
                     return new TransformState(pos, rot);
                 }
             }
 
             logger.LogError("Should never be here! Code should have return from if or for loop above.");
-            return Last.state;
+            return this.Last.state;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -174,25 +174,25 @@ namespace JamesFrowen.PositionSync
         public void RemoveOldSnapshots(float oldTime)
         {
             // loop from newest to oldest
-            for (int i = buffer.Count - 1; i >= 0; i--)
+            for (var i = this.buffer.Count - 1; i >= 0; i--)
             {
                 // older than oldTime
-                if (buffer[i].time < oldTime)
+                if (this.buffer[i].time < oldTime)
                 {
-                    buffer.RemoveAt(i);
+                    this.buffer.RemoveAt(i);
                 }
             }
         }
 
         public override string ToString()
         {
-            if (buffer.Count == 0) { return "Buffer Empty"; }
+            if (this.buffer.Count == 0) { return "Buffer Empty"; }
 
-            StringBuilder builder = new StringBuilder();
-            builder.AppendLine($"count:{buffer.Count}, minTime:{buffer[0].time}, maxTime:{buffer[buffer.Count - 1].time}");
-            for (int i = 0; i < buffer.Count; i++)
+            var builder = new StringBuilder();
+            builder.AppendLine($"count:{this.buffer.Count}, minTime:{this.buffer[0].time}, maxTime:{this.buffer[this.buffer.Count - 1].time}");
+            for (var i = 0; i < this.buffer.Count; i++)
             {
-                builder.AppendLine($"  {i}: {buffer[i].time}");
+                builder.AppendLine($"  {i}: {this.buffer[i].time}");
             }
             return builder.ToString();
         }

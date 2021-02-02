@@ -1,5 +1,5 @@
-using System.Runtime.CompilerServices;
 using Mirror;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 namespace JamesFrowen.PositionSync
@@ -45,46 +45,46 @@ namespace JamesFrowen.PositionSync
         public float ClientTime
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => clientTime;
+            get => this.clientTime;
         }
         public float ServerTime
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => previousServerTime;
+            get => this.previousServerTime;
         }
 
         public InterpolationTime(float clientDelay, float rangeFromGoal = 4, int movingAverageCount = 30)
         {
-            goalOffset = clientDelay;
+            this.goalOffset = clientDelay;
 
-            positiveThreshold = clientDelay / rangeFromGoal;
-            negativeThreshold = -clientDelay / rangeFromGoal;
+            this.positiveThreshold = clientDelay / rangeFromGoal;
+            this.negativeThreshold = -clientDelay / rangeFromGoal;
 
-            diffAvg = new ExponentialMovingAverage(movingAverageCount);
+            this.diffAvg = new ExponentialMovingAverage(movingAverageCount);
         }
 
         public void OnTick(float deltaTime)
         {
-            clientTime += deltaTime * clientScaleTime;
+            this.clientTime += deltaTime * this.clientScaleTime;
         }
 
         public void OnMessage(float serverTime)
         {
             // if first message set client time to server-diff
-            if (!intialized)
+            if (!this.intialized)
             {
-                previousServerTime = serverTime;
-                clientTime = serverTime - goalOffset;
-                intialized = true;
+                this.previousServerTime = serverTime;
+                this.clientTime = serverTime - this.goalOffset;
+                this.intialized = true;
                 return;
             }
 
-            Debug.Assert(serverTime > previousServerTime, "Recieved message out of order.");
+            Debug.Assert(serverTime > this.previousServerTime, "Recieved message out of order.");
 
-            previousServerTime = serverTime;
+            this.previousServerTime = serverTime;
 
-            float diff = serverTime - clientTime;
-            diffAvg.Add(diff);
+            var diff = serverTime - this.clientTime;
+            this.diffAvg.Add(diff);
             // diff is server-client,
             // we want client to be 2 frames behind so that there is always snapshots to interoplate towards
             // server-client-offset
@@ -92,15 +92,15 @@ namespace JamesFrowen.PositionSync
             // if negative then server is behind, => we need to run client slow to not run out of spanshots
 
             // we want diffVsGoal to be as close to 0 as possible
-            float fromGoal = (float)diffAvg.Value - goalOffset;
-            if (fromGoal > positiveThreshold)
-                clientScaleTime = fastScale;
-            else if (fromGoal < negativeThreshold)
-                clientScaleTime = slowScale;
+            var fromGoal = (float)this.diffAvg.Value - this.goalOffset;
+            if (fromGoal > this.positiveThreshold)
+                this.clientScaleTime = this.fastScale;
+            else if (fromGoal < this.negativeThreshold)
+                this.clientScaleTime = this.slowScale;
             else
-                clientScaleTime = normalScale;
+                this.clientScaleTime = this.normalScale;
 
-            if (logger.LogEnabled()) { logger.Log($"st {serverTime:0.00} ct {clientTime:0.00} diff {diff * 1000:0.0}, wanted:{fromGoal * 1000:0.0}, scale:{clientScaleTime}"); }
+            if (logger.LogEnabled()) { logger.Log($"st {serverTime:0.00} ct {this.clientTime:0.00} diff {diff * 1000:0.0}, wanted:{fromGoal * 1000:0.0}, scale:{this.clientScaleTime}"); }
         }
     }
 }
