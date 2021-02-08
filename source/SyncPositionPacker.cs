@@ -1,6 +1,7 @@
 ﻿using JamesFrowen.BitPacking;
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 namespace JamesFrowen.PositionSync
@@ -23,6 +24,7 @@ namespace JamesFrowen.PositionSync
         [SerializeField] float precision = 0.01f;
 
         [Header("Rotation Compression")]
+        [SerializeField] bool syncRotation;
         [SerializeField] int bitCount = 9;
 
         [Header("Transform Parent")]
@@ -53,6 +55,13 @@ namespace JamesFrowen.PositionSync
         [NonSerialized] internal PositionPacker positionPacker;
         [NonSerialized] internal QuaternionPacker rotationPacker;
 
+
+        public bool SyncRotation
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => this.syncRotation;
+        }
+
         private void OnEnable()
         {
             // time precision 1000 times more than interval
@@ -77,8 +86,8 @@ namespace JamesFrowen.PositionSync
             this.rotationPacker = new QuaternionPacker(this.bitCount);
 
 
-            this._totalBitCountMin = this.idPacker.minBitCount + this.rotationPacker.bitCount + this.positionPacker.bitCount + (this.syncParent ? 1 : 0);
-            this._totalBitCountMax = this.idPacker.maxBitCount + this.rotationPacker.bitCount + this.positionPacker.bitCount + (this.syncParent ? (1 + this.parentPacker.maxBitCount) : 0);
+            this._totalBitCountMin = this.idPacker.minBitCount + (this.syncRotation ? this.rotationPacker.bitCount : 0) + this.positionPacker.bitCount + (this.syncParent ? 1 : 0);
+            this._totalBitCountMax = this.idPacker.maxBitCount + (this.syncRotation ? this.rotationPacker.bitCount : 0) + this.positionPacker.bitCount + (this.syncParent ? (1 + this.parentPacker.maxBitCount) : 0);
             this._totalByteCountMin = Mathf.CeilToInt(this._totalBitCountMin / 8f);
             this._totalByteCountMax = Mathf.CeilToInt(this._totalBitCountMax / 8f);
         }
@@ -108,7 +117,11 @@ namespace JamesFrowen.PositionSync
 
             this.idPacker.Pack(writer, id);
             this.positionPacker.Pack(writer, state.position);
-            this.rotationPacker.Pack(writer, state.rotation);
+
+            if (this.syncRotation)
+            {
+                this.rotationPacker.Pack(writer, state.rotation);
+            }
 
             if (this.syncParent)
             {
@@ -125,7 +138,9 @@ namespace JamesFrowen.PositionSync
         {
             id = this.idPacker.Unpack(reader);
             pos = this.positionPacker.Unpack(reader);
-            rot = this.rotationPacker.Unpack(reader);
+            rot = this.syncRotation
+                ? this.rotationPacker.Unpack(reader)
+                : Quaternion.identity;
 
             parentId = this.syncParent
                 ? this.parentPacker.UnpackNullable(reader)

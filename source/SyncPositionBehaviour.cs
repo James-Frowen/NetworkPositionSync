@@ -385,11 +385,14 @@ namespace JamesFrowen.PositionSync
             var snapshotTime = this.interpolationTime.ClientTime;
             var state = this.snapshotBuffer.GetLinearInterpolation(snapshotTime);
             if (logger.LogEnabled()) { logger.Log($"p1:{this.Position.x} p2:{state.position.x} delta:{this.Position.x - state.position.x}"); }
+
             this.Position = state.position;
-            this.Rotation = state.rotation;
+
+            if (this.packer.SyncRotation)
+                this.Rotation = state.rotation;
 
             // remove snapshots older than 2times sync interval, they will never be used by Interpolation
-            var removeTime = snapshotTime - this.clientDelay * 1.5f;
+            var removeTime = snapshotTime - (this.clientDelay * 1.5f);
             this.snapshotBuffer.RemoveOldSnapshots(removeTime);
         }
         #endregion
