@@ -24,7 +24,7 @@ namespace JamesFrowen.PositionSync
         [SerializeField] float precision = 0.01f;
 
         [Header("Rotation Compression")]
-        [SerializeField] bool syncRotation;
+        [SerializeField] bool syncRotation = true;
         [SerializeField] int bitCount = 9;
 
         [Header("Transform Parent")]
