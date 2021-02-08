@@ -25,20 +25,31 @@ namespace JamesFrowen.PositionSync
         [Header("Rotation Compression")]
         [SerializeField] int bitCount = 9;
 
+        [Header("Transform Parent")]
+        [SerializeField] bool syncParent;
+
+
 
         [Header("Position Debug And Gizmo")]
         // todo replace these serialized fields with custom editor
         [SerializeField] private bool drawGizmo;
         [SerializeField] private Color gizmoColor;
         [Tooltip("readonly")]
-        [SerializeField] private int _bitCount;
+        [SerializeField] private int _posBitCount;
         [Tooltip("readonly")]
-        [SerializeField] private Vector3Int _bitCountAxis;
+        [SerializeField] private Vector3Int _posBitCountAxis;
         [Tooltip("readonly")]
-        [SerializeField] private int _byteCount;
+        [SerializeField] private int _posByteCount;
+
+        [SerializeField] private int _totalBitCountMin;
+        [SerializeField] private int _totalBitCountMax;
+        [SerializeField] private int _totalByteCountMin;
+        [SerializeField] private int _totalByteCountMax;
+
 
         [NonSerialized] internal FloatPacker timePacker;
         [NonSerialized] internal UIntVariablePacker idPacker;
+        [NonSerialized] internal UIntVariablePacker parentPacker;
         [NonSerialized] internal PositionPacker positionPacker;
         [NonSerialized] internal QuaternionPacker rotationPacker;
 
@@ -47,15 +58,29 @@ namespace JamesFrowen.PositionSync
             // time precision 1000 times more than interval
             this.timePacker = new FloatPacker(0, this.maxTime, this.timePrecision);
             this.idPacker = new UIntVariablePacker(this.smallBitCount, this.mediumBitCount, this.largeBitCount);
+            // parent can use same packer as id for now
+            this.parentPacker = this.idPacker;
             this.positionPacker = new PositionPacker(this.min, this.max, this.precision);
             this.rotationPacker = new QuaternionPacker(this.bitCount);
         }
+
         private void OnValidate()
         {
             this.positionPacker = new PositionPacker(this.min, this.max, this.precision);
-            this._bitCount = this.positionPacker.bitCount;
-            this._bitCountAxis = this.positionPacker.BitCountAxis;
-            this._byteCount = Mathf.CeilToInt(this._bitCount / 8f);
+            this._posBitCount = this.positionPacker.bitCount;
+            this._posBitCountAxis = this.positionPacker.BitCountAxis;
+            this._posByteCount = Mathf.CeilToInt(this._posBitCount / 8f);
+
+            this.timePacker = new FloatPacker(0, this.maxTime, this.timePrecision);
+            this.idPacker = new UIntVariablePacker(this.smallBitCount, this.mediumBitCount, this.largeBitCount);
+            this.parentPacker = this.idPacker;
+            this.rotationPacker = new QuaternionPacker(this.bitCount);
+
+
+            this._totalBitCountMin = this.idPacker.minBitCount + this.rotationPacker.bitCount + this.positionPacker.bitCount + (this.syncParent ? 1 : 0);
+            this._totalBitCountMax = this.idPacker.maxBitCount + this.rotationPacker.bitCount + this.positionPacker.bitCount + (this.syncParent ? (1 + this.parentPacker.maxBitCount) : 0);
+            this._totalByteCountMin = Mathf.CeilToInt(this._totalBitCountMin / 8f);
+            this._totalByteCountMax = Mathf.CeilToInt(this._totalBitCountMax / 8f);
         }
 
         [Conditional("UNITY_EDITOR")]
@@ -84,6 +109,11 @@ namespace JamesFrowen.PositionSync
             this.idPacker.Pack(writer, id);
             this.positionPacker.Pack(writer, state.position);
             this.rotationPacker.Pack(writer, state.rotation);
+
+            if (this.syncParent)
+            {
+                this.parentPacker.PackNullable(writer, behaviour.ParentNetId);
+            }
         }
 
         public float UnpackTime(BitReader reader)
@@ -91,11 +121,15 @@ namespace JamesFrowen.PositionSync
             return this.timePacker.Unpack(reader);
         }
 
-        public void UnpackNext(BitReader bitReader, out uint id, out Vector3 pos, out Quaternion rot)
+        public void UnpackNext(BitReader reader, out uint id, out Vector3 pos, out Quaternion rot, out uint? parentId)
         {
-            id = this.idPacker.Unpack(bitReader);
-            pos = this.positionPacker.Unpack(bitReader);
-            rot = this.rotationPacker.Unpack(bitReader);
+            id = this.idPacker.Unpack(reader);
+            pos = this.positionPacker.Unpack(reader);
+            rot = this.rotationPacker.Unpack(reader);
+
+            parentId = this.syncParent
+                ? this.parentPacker.UnpackNullable(reader)
+                : null;
         }
     }
 }

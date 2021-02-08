@@ -13,6 +13,8 @@ namespace JamesFrowen.PositionSync
     [AddComponentMenu("Network/SyncPosition/SyncPositionBehaviour")]
     public class SyncPositionBehaviour : NetworkBehaviour, ISyncPositionBehaviour
     {
+        static readonly ILogger logger = LogFactory.GetLogger<SyncPositionBehaviour>(LogType.Error);
+
         #region ISyncPositionBehaviour
         bool ISyncPositionBehaviour.NeedsUpdate() => this.ServerNeedsToSendUpdate();
 
@@ -45,17 +47,14 @@ namespace JamesFrowen.PositionSync
 
             this.AddSnapShotToBuffer(state, time);
         }
+
+        uint? ISyncPositionBehaviour.ParentNetId => this.parentId;
         #endregion
 
-
-
-
-        static readonly ILogger logger = LogFactory.GetLogger<SyncPositionBehaviour>(LogType.Error);
 
         [Header("References")]
         [SerializeField] SyncPositionBehaviourRuntimeDictionary _behaviourSet;
         [SerializeField] SyncPositionPacker packer;
-
 
         [Tooltip("Which transform to sync")]
         [SerializeField] Transform target;
@@ -88,6 +87,8 @@ namespace JamesFrowen.PositionSync
         /// </summary>
         bool _needsUpdate;
 
+        uint? parentId;
+
         /// <summary>
         /// latest values from client
         /// </summary>
@@ -119,18 +120,31 @@ namespace JamesFrowen.PositionSync
                 this.target = this.transform;
         }
 
+        /// <summary>
+        /// server auth or no owner, or host
+        /// </summary>
         bool IsControlledByServer
         {
-            // server auth or no owner, or host
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => !this.clientAuthority || this.connectionToClient == null || this.connectionToClient == NetworkServer.localConnection;
         }
 
+        /// <summary>
+        /// client auth and owner
+        /// </summary>
         bool IsLocalClientInControl
         {
-            // client auth and owner
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => this.clientAuthority && this.hasAuthority;
+        }
+
+        /// <summary>
+        /// is this server/client in control of the object
+        /// </summary>
+        bool InControl
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (this.isServer && this.IsControlledByServer) || (this.isClient && this.IsLocalClientInControl);
         }
 
         Vector3 Position
@@ -377,6 +391,27 @@ namespace JamesFrowen.PositionSync
             // remove snapshots older than 2times sync interval, they will never be used by Interpolation
             var removeTime = snapshotTime - this.clientDelay * 1.5f;
             this.snapshotBuffer.RemoveOldSnapshots(removeTime);
+        }
+        #endregion
+
+        #region Public Methods
+        public void SetParent(NetworkIdentity parent)
+        {
+            throw new NotImplementedException();
+            if (this.InControl)
+            {
+                if (parent != null)
+                {
+                    this.parentId = parent.netId;
+                    this.transform.parent = parent.transform;
+                }
+                else
+                {
+                    this.parentId = null;
+                    this.transform.parent = null;
+                }
+            }
+            else if (logger.ErrorEnabled()) logger.LogError("Parent can't be set without control");
         }
         #endregion
     }

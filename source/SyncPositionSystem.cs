@@ -140,7 +140,7 @@ namespace JamesFrowen.PositionSync
 
             while (bitReader.Position < count)
             {
-                this.packer.UnpackNext(bitReader, out var id, out var pos, out var rot);
+                this.packer.UnpackNext(bitReader, out var id, out var pos, out var rot, out var parentId);
 
                 if (this._behaviours.TryGet(id, out var behaviour))
                 {
@@ -166,7 +166,7 @@ namespace JamesFrowen.PositionSync
         {
             var bitReader = new BitReader(msg.payload);
             var time = this.packer.UnpackTime(bitReader);
-            this.packer.UnpackNext(bitReader, out var id, out var pos, out var rot);
+            this.packer.UnpackNext(bitReader, out var id, out var pos, out var rot, out var parentId);
 
             if (this._behaviours.TryGet(id, out var behaviour))
             {
@@ -183,6 +183,7 @@ namespace JamesFrowen.PositionSync
         #region properties
         uint netId { get; }
         TransformState TransformState { get; }
+        uint? ParentNetId { get; }
         #endregion
 
         #region server methods

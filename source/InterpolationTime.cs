@@ -10,7 +10,7 @@ namespace JamesFrowen.PositionSync
 
         bool intialized;
         /// <summary>
-        /// time client uses to interoplolate
+        /// time client uses to interpolate
         /// </summary>
         float clientTime;
         /// <summary>
@@ -79,7 +79,7 @@ namespace JamesFrowen.PositionSync
                 return;
             }
 
-            Debug.Assert(serverTime > this.previousServerTime, "Recieved message out of order.");
+            Debug.Assert(serverTime > this.previousServerTime, "Received message out of order.");
 
             this.previousServerTime = serverTime;
 

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Mirror;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -9,6 +10,8 @@ namespace JamesFrowen.PositionSync
     // todo make runtime dictionary
     public class SyncPositionBehaviourRuntimeDictionary : ScriptableObject, IEnumerable<ISyncPositionBehaviour>
     {
+        static readonly ILogger logger = LogFactory.GetLogger<SyncPositionBehaviour>(LogType.Error);
+
         public event ObjectSet<ISyncPositionBehaviour>.OnChange onChange;
 
         [NonSerialized] Dictionary<uint, ISyncPositionBehaviour> _items = new Dictionary<uint, ISyncPositionBehaviour>();
@@ -19,7 +22,20 @@ namespace JamesFrowen.PositionSync
         {
             var netId = thing.netId;
             this._items.Add(netId, thing);
-            onChange?.Invoke(thing, true);
+
+
+            if (this._items.TryGetValue(netId, out var existingValue))
+            {
+                if (existingValue != thing)
+                {
+                    if (logger.ErrorEnabled()) logger.LogError("Parent can't be set without control");
+                }
+            }
+            else
+            {
+                this._items.Add(netId, thing);
+                onChange?.Invoke(thing, true);
+            }
         }
 
         public void Remove(ISyncPositionBehaviour thing)

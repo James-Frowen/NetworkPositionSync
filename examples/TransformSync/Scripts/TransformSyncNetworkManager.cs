@@ -1,5 +1,7 @@
 using Mirror;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace JamesFrowen.PositionSync.Example
@@ -17,6 +19,44 @@ namespace JamesFrowen.PositionSync.Example
         [SerializeField] Rect guiRect = new Rect(100, 0, 200, 200);
 
         List<GameObject> cubes = new List<GameObject>();
+        [SerializeField] private bool autoStartFromCLI;
+
+        public override void Start()
+        {
+            base.Start();
+
+            if (this.autoStartFromCLI)
+            {
+                var args = Environment.GetCommandLineArgs().ToList();
+                var addressIndex = args.IndexOf("-address");
+                if (addressIndex != -1)
+                {
+                    if (addressIndex + 1 < args.Count)
+                    {
+                        var address = args[addressIndex + 1];
+                        this.networkAddress = address;
+                    }
+                    else
+                    {
+                        Debug.LogError("Useage '-address <hostname>'");
+                    }
+                }
+
+                Application.targetFrameRate = this.serverTickRate;
+                if (args.Contains("-server"))
+                {
+                    this.StartServer();
+                }
+                else if (args.Contains("-client"))
+                {
+                    this.StartClient();
+                }
+                else
+                {
+                    Debug.LogWarning("no Startup command found");
+                }
+            }
+        }
         public override void OnStartClient()
         {
             this.system.RegisterHandlers();

@@ -24,22 +24,6 @@ namespace JamesFrowen.PositionSync
         }
     }
 
-    public static class TransformStateWriter
-    {
-        public static void WriteTransformState(this NetworkWriter writer, TransformState value)
-        {
-            writer.WriteVector3(value.position);
-            writer.WriteUInt32(Compression.CompressQuaternion(value.rotation));
-        }
-
-        public static TransformState ReadTransformState(this NetworkReader reader)
-        {
-            var position = reader.ReadVector3();
-            var rotation = Compression.DecompressQuaternion(reader.ReadUInt32());
-
-            return new TransformState(position, rotation);
-        }
-    }
     public class SnapshotBuffer
     {
         static readonly ILogger logger = LogFactory.GetLogger<SnapshotBuffer>(LogType.Error);

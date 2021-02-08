@@ -187,7 +187,7 @@ MonoBehaviour:
   _behaviourSet: {fileID: 11400000, guid: dbdb2ef6064cd7d4fb7355637c47ce06, type: 2}
   packer: {fileID: 11400000, guid: 9d07eef94c2ff144aba70e4db5e33448, type: 2}
   target: {fileID: 2989685730616657706}
-  clientAuthority: 0
+  clientAuthority: 1
   useLocalSpace: 1
   positionSensitivity: 0.1
   rotationSensitivity: 0.1
