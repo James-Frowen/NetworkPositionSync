@@ -1,7 +1,12 @@
 name: CI
 
 on: 
+  pull_request:
+    types: 
+     - ready_for_review
   push:
+    branches:
+     - main
     paths-ignore:
       - 'doc/**'
       - '*.md'
@@ -13,7 +18,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-    if: true
     steps:
   
       # Checkout repository (required to test local actions)
