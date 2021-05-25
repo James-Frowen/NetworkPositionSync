@@ -1,5 +1,4 @@
 using System;
-using Mirror;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -86,23 +85,6 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
     [Category("NetworkPositionSync")]
     public class SnapshotBuffer_GetInterpolation
     {
-        private ILogger logger;
-        private LogType oldFilterLogType;
-
-        // set and reset log level so tests can validate
-        [SetUp]
-        public void SetUp()
-        {
-            logger = LogFactory.GetLogger<SnapshotBuffer>(LogType.Error);
-            oldFilterLogType = logger.filterLogType;
-            logger.filterLogType = LogType.Log;
-        }
-        [TearDown]
-        public void TearDown()
-        {
-            logger.filterLogType = oldFilterLogType;
-        }
-
         [Test]
         public void ShouldGiveErrorWhenEmpty()
         {

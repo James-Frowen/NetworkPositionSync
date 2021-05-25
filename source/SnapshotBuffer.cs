@@ -2,11 +2,19 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text;
+using JamesFrowen.Logging;
 using Mirror;
 using UnityEngine;
 
 namespace JamesFrowen.PositionSync
 {
+#if !MIRROR_35_0_OR_NEWER
+#error Only supports mirror version v35 or later
+#endif
+#if MIRROR_36_0_OR_NEWER
+#warning Latest supported version is v35
+#endif
+
     public struct TransformState
     {
         public readonly Vector3 position;
@@ -42,8 +50,6 @@ namespace JamesFrowen.PositionSync
     }
     public class SnapshotBuffer
     {
-        static readonly ILogger logger = LogFactory.GetLogger<SnapshotBuffer>(LogType.Error);
-
         struct Snapshot
         {
             /// <summary>
@@ -109,7 +115,7 @@ namespace JamesFrowen.PositionSync
             // first snapshot
             if (buffer.Count == 1)
             {
-                if (logger.LogEnabled()) logger.Log("First snapshot");
+                SimpleLogger.Debug("First snapshot");
 
                 return First.state;
             }
@@ -117,7 +123,7 @@ namespace JamesFrowen.PositionSync
             // if first snapshot is after now, there is no "from", so return same as first snapshot
             if (First.time > now)
             {
-                if (logger.LogEnabled()) logger.Log($"No snapshots for t={now:0.000}, using earliest t={buffer[0].time:0.000}");
+                SimpleLogger.Debug($"No snapshots for t={now:0.000}, using earliest t={buffer[0].time:0.000}");
 
                 return First.state;
             }
@@ -127,8 +133,7 @@ namespace JamesFrowen.PositionSync
             // there could be no new data from either lag or because object hasn't moved
             if (Last.time < now)
             {
-                if (logger.WarnEnabled()) logger.LogWarning($"No snapshots for t={now:0.000}, using first t={buffer[0].time:0.000} last t={Last.time:0.000}");
-
+                SimpleLogger.DebugWarn($"No snapshots for t={now:0.000}, using first t={buffer[0].time:0.000} last t={Last.time:0.000}");
                 return Last.state;
             }
 
@@ -144,14 +149,14 @@ namespace JamesFrowen.PositionSync
                 if (fromTime <= now && now <= toTime)
                 {
                     float alpha = (float)Clamp01((now - fromTime) / (toTime - fromTime));
-                    if (logger.LogEnabled()) { logger.Log($"alpha:{alpha:0.000}"); }
+                    SimpleLogger.Trace($"alpha:{alpha:0.000}");
                     Vector3 pos = Vector3.Lerp(from.state.position, to.state.position, alpha);
                     Quaternion rot = Quaternion.Slerp(from.state.rotation, to.state.rotation, alpha);
                     return new TransformState(pos, rot);
                 }
             }
 
-            logger.LogError("Should never be here! Code should have return from if or for loop above.");
+            SimpleLogger.Error("Should never be here! Code should have return from if or for loop above.");
             return Last.state;
         }
 

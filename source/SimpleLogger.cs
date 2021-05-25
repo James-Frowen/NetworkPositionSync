@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using Conditional = System.Diagnostics.ConditionalAttribute;
 
 namespace JamesFrowen.Logging
@@ -21,6 +21,13 @@ namespace JamesFrowen.Logging
                 Logger.Log(LogType.Log, $"[DEBUG] {msg}");
         }
 
+        [Conditional("DEBUG")]
+        public static void DebugWarn(string msg)
+        {
+            if (Logger.IsLogTypeAllowed(LogType.Warning))
+                Logger.Log(LogType.Warning, $"[WARN] {msg}");
+        }
+
         public static void Info(string msg)
         {
             if (Logger.IsLogTypeAllowed(LogType.Log))
@@ -30,7 +37,7 @@ namespace JamesFrowen.Logging
         public static void Warn(string msg)
         {
             if (Logger.IsLogTypeAllowed(LogType.Warning))
-                Logger.Log(LogType.Log, $"[WARN] {msg}");
+                Logger.Log(LogType.Warning, $"[WARN] {msg}");
         }
 
         [Conditional("UNITY_ASSERTIONS")]
@@ -43,7 +50,7 @@ namespace JamesFrowen.Logging
         public static void Error(string msg)
         {
             if (Logger.IsLogTypeAllowed(LogType.Warning))
-                Logger.Log(LogType.Log, $"[ERROR] {msg}");
+                Logger.Log(LogType.Error, $"[ERROR] {msg}");
         }
     }
 }

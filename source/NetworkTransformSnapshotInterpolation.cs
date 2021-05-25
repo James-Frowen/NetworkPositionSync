@@ -1,17 +1,17 @@
 using System;
 using System.Runtime.CompilerServices;
+using JamesFrowen.Logging;
 using Mirror;
 using UnityEngine;
 
 namespace JamesFrowen.PositionSync
 {
+
     [AddComponentMenu("Network/NetworkTransformSnapshotInterpolation")]
     // placeholder name, can be renamed when old component gets removed
     // when renaming name sure GUID of component stays the same
     public class NetworkTransformSnapshotInterpolation : NetworkBehaviour
     {
-        static readonly ILogger logger = LogFactory.GetLogger<NetworkTransformSnapshotInterpolation>(LogType.Error);
-
         [Tooltip("Which transform to sync")]
         [SerializeField] Transform target;
 
@@ -343,7 +343,7 @@ namespace JamesFrowen.PositionSync
             // we then subtract clientDelay to handle any jitter
             double snapshotTime = localTime - clientDelay;
             TransformState state = snapshotBuffer.GetLinearInterpolation(snapshotTime);
-            if (logger.LogEnabled()) { logger.Log($"p1:{Position.x} p2:{state.position.x} delta:{Position.x - state.position.x}"); }
+            SimpleLogger.Trace($"p1:{Position.x} p2:{state.position.x} delta:{Position.x - state.position.x}");
             Position = state.position;
             Rotation = state.rotation;
 
