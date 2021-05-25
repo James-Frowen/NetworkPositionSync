@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 8884906697866078236}
   - component: {fileID: 8884906697866078225}
   - component: {fileID: 9143822966503921370}
+  - component: {fileID: 639185289229711855}
   m_Layer: 0
   m_Name: ExampleNetworkManager
   m_TagString: Untagged
@@ -51,6 +52,8 @@ MonoBehaviour:
   autoStartServerBuild: 1
   showDebugMessages: 0
   serverTickRate: 30
+  serverBatching: 0
+  serverBatchInterval: 0
   offlineScene: 
   onlineScene: 
   transport: {fileID: 8884906697866078236}
@@ -64,9 +67,19 @@ MonoBehaviour:
   autoCreatePlayer: 1
   playerSpawnMethod: 0
   spawnPrefabs: []
+  system: {fileID: 639185289229711855}
+  behaviours: {fileID: 11400000, guid: dbdb2ef6064cd7d4fb7355637c47ce06, type: 2}
   cubeCount: 1
   cubePrefab: {fileID: 422637025057733891, guid: 67659c038c004454e8d869019041c4df,
     type: 3}
+  showGUI: 1
+  guiRect:
+    serializedVersion: 2
+    x: 250
+    y: 40
+    width: 200
+    height: 200
+  autoStartClient: 0
 --- !u!114 &8884906697866078236
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -118,3 +131,20 @@ MonoBehaviour:
   fontSize: 24
   textColor: {r: 1, g: 1, b: 1, a: 0.3137255}
   format: '{0}ms'
+--- !u!114 &639185289229711855
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8884906697866078237}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e39d7f8e1b55ad64493bf95650278d9b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _behaviours: {fileID: 11400000, guid: dbdb2ef6064cd7d4fb7355637c47ce06, type: 2}
+  packer: {fileID: 11400000, guid: 9d07eef94c2ff144aba70e4db5e33448, type: 2}
+  syncInterval: 0.1
+  checkEveryFrame: 1
+  sendToAll: 1

@@ -8,7 +8,7 @@ namespace JamesFrowen.PositionSync.Example
     /// Sets NavMesh destination for cube. The server will then sync the position to the clients using NetworkTransformBehaviour
     /// </summary>
     [RequireComponent(typeof(NavMeshAgent))]
-    public class MoveCube : MonoBehaviour
+    public class MoveCube : NetworkBehaviour
     {
         [SerializeField] Vector3 min;
         [SerializeField] Vector3 max;
@@ -16,27 +16,41 @@ namespace JamesFrowen.PositionSync.Example
 
         private void Awake()
         {
-            navMeshAgent = GetComponent<NavMeshAgent>();
-            navMeshAgent.enabled = NetworkServer.active;
+            this.navMeshAgent = this.GetComponent<NavMeshAgent>();
+        }
+
+        public override void OnStartClient()
+        {
+            this.navMeshAgent.enabled = this.hasAuthority;
+        }
+        public override void OnStartAuthority()
+        {
+            this.navMeshAgent.enabled = this.hasAuthority;
+        }
+        public override void OnStartServer()
+        {
+            this.navMeshAgent.enabled = this.connectionToClient == null;
         }
 
 
-        [ServerCallback]
         void Update()
         {
-            // if close to destination, set new destination
-            if (Vector3.Distance(transform.position, navMeshAgent.destination) < 1f)
+            if (this.hasAuthority || this.connectionToClient == null && this.isServer)
             {
-                navMeshAgent.destination = RandomPointInBounds();
+                // if close to destination, set new destination
+                if (Vector3.Distance(this.transform.position, this.navMeshAgent.destination) < 1f)
+                {
+                    this.navMeshAgent.destination = this.RandomPointInBounds();
+                }
             }
         }
 
         public Vector3 RandomPointInBounds()
         {
             return new Vector3(
-                Random.Range(min.x, max.x),
-                Random.Range(min.y, max.y),
-                Random.Range(min.z, max.z)
+                Random.Range(this.min.x, this.max.x),
+                Random.Range(this.min.y, this.max.y),
+                Random.Range(this.min.z, this.max.z)
             );
         }
     }

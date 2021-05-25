@@ -30,6 +30,7 @@ jobs:
       - name: Checkout NetworkPositionSync
         uses: actions/checkout@v2
         with:
+          submodules: recursive
           fetch-depth: 0
           path: Assets/PositionSync
    
@@ -98,13 +99,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   Release:
+    env:
+      TARGET_PATH: Assets/NetworkPositionSync
     runs-on: windows-latest
-    if: github.ref == 'refs/heads/main'
-    needs: Tests
+    # needs: Tests
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
         with:
+          submodules: recursive
           fetch-depth: 0
 
       - name: Setup dotnet
@@ -116,8 +119,19 @@ jobs:
         run: dotnet tool install -g unity-packer
   
       - name: Package
-        run: |
-          unity-packer pack NetworkPositionSync.unitypackage source Assets/NetworkPositionSync LICENSE Assets/NetworkPositionSync/LICENSE README.md Assets/NetworkPositionSync/README.md
+
+        run: >-
+          unity-packer pack NetworkPositionSync.unitypackage 
+          source ${{ env.TARGET_PATH }}/scripts
+          LICENSE ${{ env.TARGET_PATH }}/LICENSE 
+          README.md ${{ env.TARGET_PATH }}/README.md
+          modules/BitPacking/JamesFrowen.BitPacking/Source ${{ env.TARGET_PATH }}/modules/BitPacking
+          modules/BitPacking/README.md ${{ env.TARGET_PATH }}/modules/BitPacking/README.md
+          modules/ScriptableVariables/source ${{ env.TARGET_PATH }}/modules/ScriptableVariables
+          modules/ScriptableVariables/README.md ${{ env.TARGET_PATH }}/modules/ScriptableVariables/README.md
+          
+        # modules/BitPacking/LICENSE ${{ env.TARGET_PATH }}/modules/BitPacking/LICENSE
+        # modules/ScriptableVariables/LICENSE ${{ env.TARGET_PATH }}/modules/ScriptableVariables/LICENSE
 
       - uses: actions/upload-artifact@v1
         with:
