@@ -4,3 +4,6 @@
 [submodule "modules/ScriptableVariables"]
 	path = modules/ScriptableVariables
 	url = git@github.com:James-Frowen/ScriptableVariables.git
+[submodule "modules/SimpleLogging"]
+	path = modules/SimpleLogging
+	url = git@github.com:James-Frowen/SimpleLogging.git
