@@ -3,7 +3,8 @@
     "references": [
         "Mirror",
         "JamesFrowen.BitPacking",
-        "JamesFrowen.ScriptableVariables"
+        "JamesFrowen.ScriptableVariables",
+        "JamesFrowen.SimpleLogger"
     ],
     "optionalUnityReferences": [],
     "includePlatforms": [],
