@@ -1,13 +1,11 @@
-using Mirror;
 using System.Runtime.CompilerServices;
-using UnityEngine;
+using JamesFrowen.Logging;
+using Mirror;
 
 namespace JamesFrowen.PositionSync
 {
     public class InterpolationTime
     {
-        static readonly ILogger logger = LogFactory.GetLogger<InterpolationTime>(LogType.Error);
-
         bool intialized;
         /// <summary>
         /// time client uses to interpolate
@@ -45,46 +43,46 @@ namespace JamesFrowen.PositionSync
         public float ClientTime
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => this.clientTime;
+            get => clientTime;
         }
         public float ServerTime
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => this.previousServerTime;
+            get => previousServerTime;
         }
 
         public InterpolationTime(float clientDelay, float rangeFromGoal = 4, int movingAverageCount = 30)
         {
-            this.goalOffset = clientDelay;
+            goalOffset = clientDelay;
 
-            this.positiveThreshold = clientDelay / rangeFromGoal;
-            this.negativeThreshold = -clientDelay / rangeFromGoal;
+            positiveThreshold = clientDelay / rangeFromGoal;
+            negativeThreshold = -clientDelay / rangeFromGoal;
 
-            this.diffAvg = new ExponentialMovingAverage(movingAverageCount);
+            diffAvg = new ExponentialMovingAverage(movingAverageCount);
         }
 
         public void OnTick(float deltaTime)
         {
-            this.clientTime += deltaTime * this.clientScaleTime;
+            clientTime += deltaTime * clientScaleTime;
         }
 
         public void OnMessage(float serverTime)
         {
             // if first message set client time to server-diff
-            if (!this.intialized)
+            if (!intialized)
             {
-                this.previousServerTime = serverTime;
-                this.clientTime = serverTime - this.goalOffset;
-                this.intialized = true;
+                previousServerTime = serverTime;
+                clientTime = serverTime - goalOffset;
+                intialized = true;
                 return;
             }
 
-            Debug.Assert(serverTime > this.previousServerTime, "Received message out of order.");
+            SimpleLogger.Assert(serverTime > previousServerTime, "Received message out of order.");
 
-            this.previousServerTime = serverTime;
+            previousServerTime = serverTime;
 
-            var diff = serverTime - this.clientTime;
-            this.diffAvg.Add(diff);
+            float diff = serverTime - clientTime;
+            diffAvg.Add(diff);
             // diff is server-client,
             // we want client to be 2 frames behind so that there is always snapshots to interoplate towards
             // server-client-offset
@@ -92,15 +90,15 @@ namespace JamesFrowen.PositionSync
             // if negative then server is behind, => we need to run client slow to not run out of spanshots
 
             // we want diffVsGoal to be as close to 0 as possible
-            var fromGoal = (float)this.diffAvg.Value - this.goalOffset;
-            if (fromGoal > this.positiveThreshold)
-                this.clientScaleTime = this.fastScale;
-            else if (fromGoal < this.negativeThreshold)
-                this.clientScaleTime = this.slowScale;
+            float fromGoal = (float)diffAvg.Value - goalOffset;
+            if (fromGoal > positiveThreshold)
+                clientScaleTime = fastScale;
+            else if (fromGoal < negativeThreshold)
+                clientScaleTime = slowScale;
             else
-                this.clientScaleTime = this.normalScale;
+                clientScaleTime = normalScale;
 
-            if (logger.LogEnabled()) { logger.Log($"st {serverTime:0.00} ct {this.clientTime:0.00} diff {diff * 1000:0.0}, wanted:{fromGoal * 1000:0.0}, scale:{this.clientScaleTime}"); }
+            SimpleLogger.Trace($"st {serverTime:0.00} ct {clientTime:0.00} diff {diff * 1000:0.0}, wanted:{fromGoal * 1000:0.0}, scale:{clientScaleTime}");
         }
     }
 }

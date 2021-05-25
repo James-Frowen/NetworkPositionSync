@@ -1,6 +1,6 @@
-﻿using JamesFrowen.BitPacking;
-using Mirror;
 using System;
+using JamesFrowen.BitPacking;
+using Mirror;
 using UnityEngine;
 
 namespace JamesFrowen.PositionSync
@@ -29,17 +29,17 @@ namespace JamesFrowen.PositionSync
 
         private void OnValidate()
         {
-            if (!this.sendToAll)
+            if (!sendToAll)
             {
-                this.sendToAll = true;
+                sendToAll = true;
                 UnityEngine.Debug.LogWarning("sendToAll disabled is not implemented yet");
             }
         }
 
         private void OnDrawGizmos()
         {
-            if (this.packer != null)
-                this.packer.DrawGizmo();
+            if (packer != null)
+                packer.DrawGizmo();
         }
 
         public void RegisterHandlers()
@@ -47,12 +47,12 @@ namespace JamesFrowen.PositionSync
             // todo find a way to register these handles so it doesn't need to be done from NetworkManager
             if (NetworkClient.active)
             {
-                NetworkClient.RegisterHandler<NetworkPositionMessage>(this.ClientHandleNetworkPositionMessage);
+                NetworkClient.RegisterHandler<NetworkPositionMessage>(ClientHandleNetworkPositionMessage);
             }
 
             if (NetworkServer.active)
             {
-                NetworkServer.RegisterHandler<NetworkPositionSingleMessage>(this.ServerHandleNetworkPositionMessage);
+                NetworkServer.RegisterHandler<NetworkPositionSingleMessage>(ServerHandleNetworkPositionMessage);
             }
         }
 
@@ -74,18 +74,18 @@ namespace JamesFrowen.PositionSync
         [ServerCallback]
         private void LateUpdate()
         {
-            if (this.checkEveryFrame || this.ShouldSync())
+            if (checkEveryFrame || ShouldSync())
             {
-                this.SendUpdateToAll();
+                SendUpdateToAll();
             }
         }
 
         bool ShouldSync()
         {
-            var now = Time.time;
-            if (now > this.nextSyncInterval)
+            float now = Time.time;
+            if (now > nextSyncInterval)
             {
-                this.nextSyncInterval += this.syncInterval;
+                nextSyncInterval += syncInterval;
                 return true;
             }
             else
@@ -97,58 +97,59 @@ namespace JamesFrowen.PositionSync
         internal void SendUpdateToAll()
         {
             // dont send message if no behaviours
-            if (this._behaviours.Count == 0) { return; }
+            if (_behaviours.Count == 0) { return; }
 
             // todo dont create new buffer each time
-            var bitWriter = new BitWriter(this._behaviours.Count * 32);
-            var anyNeedUpdate = this.PackBehaviours(bitWriter, (float)NetworkTime.time);
+            BitWriter bitWriter = new BitWriter(_behaviours.Count * 32);
+            bool anyNeedUpdate = PackBehaviours(bitWriter, (float)NetworkTime.time);
 
             // dont send anything if nothing was written (eg, nothing dirty)
             if (!anyNeedUpdate) { return; }
 
+            byte[] tempBuffer = new byte[1300];
             NetworkServer.SendToAll(new NetworkPositionMessage
             {
-                payload = bitWriter.ToArraySegment()
+                payload = new ArraySegment<byte>(tempBuffer)
             });
         }
 
         internal bool PackBehaviours(BitWriter bitWriter, float time)
         {
-            this.packer.PackTime(bitWriter, time);
-            var anyNeedUpdate = false;
-            foreach (var behaviour in this._behaviours)
+            packer.PackTime(bitWriter, time);
+            bool anyNeedUpdate = false;
+            foreach (SyncPositionBehaviour behaviour in _behaviours)
             {
                 if (!behaviour.NeedsUpdate())
                     continue;
 
                 anyNeedUpdate = true;
 
-                this.packer.PackNext(bitWriter, behaviour);
+                packer.PackNext(bitWriter, behaviour);
 
                 // todo handle client authority updates better
-                behaviour.ClearNeedsUpdate(this.syncInterval);
+                behaviour.ClearNeedsUpdate(syncInterval);
             }
-            bitWriter.Flush();
             return anyNeedUpdate;
         }
 
         internal void ClientHandleNetworkPositionMessage(NetworkConnection _conn, NetworkPositionMessage msg)
         {
-            var count = msg.payload.Count;
-            var bitReader = new BitReader(msg.payload);
-            var time = this.packer.UnpackTime(bitReader);
+            int length = msg.payload.Count;
+            BitReader bitReader = new BitReader(length);
+            bitReader.CopyToBuffer(msg.payload);
+            float time = packer.UnpackTime(bitReader);
+            ulong count = packer.UnpackCount(bitReader);
 
-            while (bitReader.Position < count)
+            for (uint i = 0; i < count; i++)
             {
-                this.packer.UnpackNext(bitReader, out var id, out var pos, out var rot, out var parentId);
+                packer.UnpackNext(bitReader, out uint id, out Vector3 pos, out Quaternion rot);
 
-                if (this._behaviours.TryGet(id, out var behaviour))
+                if (_behaviours.TryGet(id, out SyncPositionBehaviour behaviour))
                 {
                     behaviour.ApplyOnClient(new TransformState(pos, rot), time);
                 }
 
             }
-            Debug.Assert(bitReader.Position == count, "should have read exact amount");
         }
 
         #endregion
@@ -164,55 +165,18 @@ namespace JamesFrowen.PositionSync
         /// <param name="arg2"></param>
         internal void ServerHandleNetworkPositionMessage(NetworkConnection _conn, NetworkPositionSingleMessage msg)
         {
-            var bitReader = new BitReader(msg.payload);
-            var time = this.packer.UnpackTime(bitReader);
-            this.packer.UnpackNext(bitReader, out var id, out var pos, out var rot, out var parentId);
+            int length = msg.payload.Count;
+            BitReader bitReader = new BitReader(length);
+            bitReader.CopyToBuffer(msg.payload);
 
-            if (this._behaviours.TryGet(id, out var behaviour))
+            float time = packer.UnpackTime(bitReader);
+            packer.UnpackNext(bitReader, out uint id, out Vector3 pos, out Quaternion rot);
+
+            if (_behaviours.TryGet(id, out SyncPositionBehaviour behaviour))
             {
                 behaviour.ApplyOnServer(new TransformState(pos, rot), time);
             }
-
-            Debug.Assert(bitReader.Position == msg.payload.Count, "should have read exact amount");
         }
-        #endregion
-    }
-
-    public interface ISyncPositionBehaviour : IUnityEqualsChecks
-    {
-        #region properties
-        uint netId { get; }
-        TransformState TransformState { get; }
-        uint? ParentNetId { get; }
-        #endregion
-
-        #region server methods
-        /// <summary>
-        /// Checks if this objects needs updating
-        /// <para>client auth: has client sent update?</para>
-        /// <para>server auth: has object moved?</para>
-        /// </summary>
-        bool NeedsUpdate();
-        /// <summary>
-        /// Reset needs update flag and sets next sync time
-        /// </summary>
-        /// <param name="syncInterval"></param>
-        void ClearNeedsUpdate(float syncInterval);
-
-        /// <summary>
-        /// Applies position on server from client authority
-        /// </summary>
-        /// <param name="transformState"></param>
-        void ApplyOnServer(TransformState state, float time);
-        #endregion
-
-        #region client methods
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="transformState"></param>
-        /// <param name="time"></param>
-        void ApplyOnClient(TransformState state, float time);
         #endregion
     }
 
