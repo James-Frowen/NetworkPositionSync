@@ -1,13 +1,11 @@
-using System.Runtime.CompilerServices;
 using JamesFrowen.Logging;
 using Mirror;
+using System.Runtime.CompilerServices;
 
 namespace JamesFrowen.PositionSync
 {
     public class InterpolationTime
     {
-        static readonly ILogger logger = LogFactory.GetLogger<InterpolationTime>(LogType.Error);
-
         /// <summary>
         /// if new time and previous time are this far apart then reset client time
         /// </summary>
@@ -50,20 +48,20 @@ namespace JamesFrowen.PositionSync
         public float ClientTime
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => clientTime;
+            get => this.clientTime;
         }
         public float ServerTime
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => previousServerTime;
+            get => this.previousServerTime;
         }
 
         public InterpolationTime(float clientDelay, float rangeFromGoal = 4, int movingAverageCount = 30)
         {
-            goalOffset = clientDelay;
+            this.goalOffset = clientDelay;
 
-            positiveThreshold = clientDelay / rangeFromGoal;
-            negativeThreshold = -clientDelay / rangeFromGoal;
+            this.positiveThreshold = clientDelay / rangeFromGoal;
+            this.negativeThreshold = -clientDelay / rangeFromGoal;
 
             this.diffAvg = new ExponentialMovingAverage(movingAverageCount);
 
@@ -73,7 +71,7 @@ namespace JamesFrowen.PositionSync
 
         public void OnTick(float deltaTime)
         {
-            clientTime += deltaTime * clientScaleTime;
+            this.clientTime += deltaTime * this.clientScaleTime;
         }
 
         public void OnMessage(float serverTime)
@@ -90,12 +88,12 @@ namespace JamesFrowen.PositionSync
                 return;
             }
 
-            SimpleLogger.Assert(serverTime > previousServerTime, "Received message out of order.");
+            SimpleLogger.Assert(serverTime > this.previousServerTime, "Received message out of order.");
 
-            previousServerTime = serverTime;
+            this.previousServerTime = serverTime;
 
-            float diff = serverTime - clientTime;
-            diffAvg.Add(diff);
+            var diff = serverTime - this.clientTime;
+            this.diffAvg.Add(diff);
             // diff is server-client,
             // we want client to be 2 frames behind so that there is always snapshots to interoplate towards
             // server-client-offset
@@ -103,15 +101,15 @@ namespace JamesFrowen.PositionSync
             // if negative then server is behind, => we need to run client slow to not run out of spanshots
 
             // we want diffVsGoal to be as close to 0 as possible
-            float fromGoal = (float)diffAvg.Value - goalOffset;
-            if (fromGoal > positiveThreshold)
-                clientScaleTime = fastScale;
-            else if (fromGoal < negativeThreshold)
-                clientScaleTime = slowScale;
+            var fromGoal = (float)this.diffAvg.Value - this.goalOffset;
+            if (fromGoal > this.positiveThreshold)
+                this.clientScaleTime = this.fastScale;
+            else if (fromGoal < this.negativeThreshold)
+                this.clientScaleTime = this.slowScale;
             else
-                clientScaleTime = normalScale;
+                this.clientScaleTime = this.normalScale;
 
-            SimpleLogger.Trace($"st {serverTime:0.00} ct {clientTime:0.00} diff {diff * 1000:0.0}, wanted:{fromGoal * 1000:0.0}, scale:{clientScaleTime}");
+            SimpleLogger.Trace($"st {serverTime:0.00} ct {this.clientTime:0.00} diff {diff * 1000:0.0}, wanted:{fromGoal * 1000:0.0}, scale:{this.clientScaleTime}");
         }
     }
 }
