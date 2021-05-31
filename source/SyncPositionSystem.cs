@@ -21,7 +21,7 @@ namespace JamesFrowen.PositionSync
         public float syncInterval = 0.1f;
         [Tooltip("Check if behaviours need update every frame, If false then checks every syncInterval")]
         public bool checkEveryFrame = true;
-        [Tooltip("Skips Visiblity and sends position to all ready connections")]
+        [Tooltip("Skips Visibility and sends position to all ready connections")]
         public bool sendToAll = true;
 
         [NonSerialized] float nextSyncInterval;
@@ -149,6 +149,12 @@ namespace JamesFrowen.PositionSync
                     behaviour.ApplyOnClient(new TransformState(pos, rot), time);
                 }
 
+            }
+
+            // todo check we need this
+            foreach (var item in this._behaviours)
+            {
+                item.OnServerTime(time);
             }
         }
 

@@ -6,6 +6,13 @@ namespace JamesFrowen.PositionSync
 {
     public class InterpolationTime
     {
+        static readonly ILogger logger = LogFactory.GetLogger<InterpolationTime>(LogType.Error);
+
+        /// <summary>
+        /// if new time and previous time are this far apart then reset client time
+        /// </summary>
+        const float SKIP_TIME_DIFF = 1f;
+
         bool intialized;
         /// <summary>
         /// time client uses to interpolate
@@ -58,7 +65,10 @@ namespace JamesFrowen.PositionSync
             positiveThreshold = clientDelay / rangeFromGoal;
             negativeThreshold = -clientDelay / rangeFromGoal;
 
-            diffAvg = new ExponentialMovingAverage(movingAverageCount);
+            this.diffAvg = new ExponentialMovingAverage(movingAverageCount);
+
+            // start at normal time scale
+            this.clientScaleTime = this.normalScale;
         }
 
         public void OnTick(float deltaTime)
@@ -69,11 +79,14 @@ namespace JamesFrowen.PositionSync
         public void OnMessage(float serverTime)
         {
             // if first message set client time to server-diff
-            if (!intialized)
+            // reset stuff if too far behind
+            // todo check this is correct
+            if (!this.intialized || (serverTime > this.previousServerTime + SKIP_TIME_DIFF))
             {
-                previousServerTime = serverTime;
-                clientTime = serverTime - goalOffset;
-                intialized = true;
+                this.previousServerTime = serverTime;
+                this.clientTime = serverTime - this.goalOffset;
+                this.clientScaleTime = this.normalScale;
+                this.intialized = true;
                 return;
             }
 

@@ -45,6 +45,12 @@ namespace JamesFrowen.PositionSync
 
             AddSnapShotToBuffer(state, time);
         }
+
+        // todo check we need this
+        internal void OnServerTime(float serverTime)
+        {
+            this.interpolationTime.OnMessage(serverTime);
+        }
         #endregion
 
 
@@ -318,7 +324,8 @@ namespace JamesFrowen.PositionSync
             if (IsLocalClientInControl)
                 return;
 
-            interpolationTime.OnMessage(serverTime);
+            // todo do we need this, or do we set it elsewhere?
+            //this.interpolationTime.OnMessage(serverTime);
 
             // buffer will be empty if first snapshot or hasn't moved for a while.
             // in this case we can add a snapshot for (serverTime-syncinterval) for interoplation
