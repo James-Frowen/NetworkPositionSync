@@ -1,7 +1,7 @@
-using JamesFrowen.Logging;
-using Mirror;
 using System;
 using System.Runtime.CompilerServices;
+using JamesFrowen.Logging;
+using Mirror;
 using UnityEngine;
 using BitWriter = JamesFrowen.BitPacking.NetworkWriter;
 
@@ -15,24 +15,24 @@ namespace JamesFrowen.PositionSync
     public class SyncPositionBehaviour : NetworkBehaviour
     {
         #region ISyncPositionBehaviour
-        internal bool NeedsUpdate() => this.ServerNeedsToSendUpdate();
+        internal bool NeedsUpdate() => ServerNeedsToSendUpdate();
 
 
         internal void ApplyOnServer(TransformState state, float time)
         {
             // this should not happen, Exception to disconnect attacker
-            if (!this.clientAuthority) { throw new InvalidOperationException("Client is not allowed to send updated when clientAuthority is false"); }
+            if (!clientAuthority) { throw new InvalidOperationException("Client is not allowed to send updated when clientAuthority is false"); }
 
-            this._latestState = state;
+            _latestState = state;
 
             // if host apply using interpolation otherwise apply exact 
-            if (this.isClient)
+            if (isClient)
             {
-                this.AddSnapShotToBuffer(state, time);
+                AddSnapShotToBuffer(state, time);
             }
             else
             {
-                this.ApplyStateNoInterpolation(state);
+                ApplyStateNoInterpolation(state);
             }
         }
 
@@ -40,22 +40,21 @@ namespace JamesFrowen.PositionSync
         {
             // not host
             // host will have already handled movement in servers code
-            if (this.isServer)
+            if (isServer)
                 return;
 
-            this.AddSnapShotToBuffer(state, time);
+            AddSnapShotToBuffer(state, time);
         }
 
         // todo check we need this
         internal void OnServerTime(float serverTime)
         {
-            this.interpolationTime.OnMessage(serverTime);
+            interpolationTime.OnMessage(serverTime);
         }
         #endregion
 
 
         [Header("References")]
-        [SerializeField] SyncPositionBehaviourRuntimeDictionary _behaviourSet;
         [SerializeField] SyncPositionPacker packer;
 
         [Tooltip("Which transform to sync")]
@@ -108,18 +107,18 @@ namespace JamesFrowen.PositionSync
 
         void OnGUI()
         {
-            if (this.showDebugGui)
+            if (showDebugGui)
             {
-                GUILayout.Label($"ServerTime: {this.interpolationTime.ServerTime}");
-                GUILayout.Label($"LocalTime: {this.interpolationTime.ClientTime}");
-                GUILayout.Label(this.snapshotBuffer.ToString());
+                GUILayout.Label($"ServerTime: {interpolationTime.ServerTime}");
+                GUILayout.Label($"LocalTime: {interpolationTime.ClientTime}");
+                GUILayout.Label(snapshotBuffer.ToString());
             }
         }
 
         void OnValidate()
         {
-            if (this.target == null)
-                this.target = this.transform;
+            if (target == null)
+                target = transform;
         }
 
         /// <summary>
@@ -128,7 +127,7 @@ namespace JamesFrowen.PositionSync
         bool IsControlledByServer
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => !this.clientAuthority || this.connectionToClient == null || this.connectionToClient == NetworkServer.localConnection;
+            get => !clientAuthority || connectionToClient == null || connectionToClient == NetworkServer.localConnection;
         }
 
         /// <summary>
@@ -137,7 +136,7 @@ namespace JamesFrowen.PositionSync
         bool IsLocalClientInControl
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => this.clientAuthority && this.hasAuthority;
+            get => clientAuthority && hasAuthority;
         }
 
         /// <summary>
@@ -146,7 +145,7 @@ namespace JamesFrowen.PositionSync
         bool InControl
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => (this.isServer && this.IsControlledByServer) || (this.isClient && this.IsLocalClientInControl);
+            get => (isServer && IsControlledByServer) || (isClient && IsLocalClientInControl);
         }
 
         Vector3 Position
@@ -154,18 +153,18 @@ namespace JamesFrowen.PositionSync
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                return this.useLocalSpace ? this.target.localPosition : this.target.position;
+                return useLocalSpace ? target.localPosition : target.position;
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set
             {
-                if (this.useLocalSpace)
+                if (useLocalSpace)
                 {
-                    this.target.localPosition = value;
+                    target.localPosition = value;
                 }
                 else
                 {
-                    this.target.position = value;
+                    target.position = value;
                 }
             }
         }
@@ -175,18 +174,18 @@ namespace JamesFrowen.PositionSync
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                return this.useLocalSpace ? this.target.localRotation : this.target.rotation;
+                return useLocalSpace ? target.localRotation : target.rotation;
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set
             {
-                if (this.useLocalSpace)
+                if (useLocalSpace)
                 {
-                    this.target.localRotation = value;
+                    target.localRotation = value;
                 }
                 else
                 {
-                    this.target.rotation = value;
+                    target.rotation = value;
                 }
             }
         }
@@ -194,7 +193,7 @@ namespace JamesFrowen.PositionSync
         public TransformState TransformState
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => new TransformState(this.Position, this.Rotation);
+            get => new TransformState(Position, Rotation);
         }
 
         float Time
@@ -212,7 +211,7 @@ namespace JamesFrowen.PositionSync
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         bool IsTimeToUpdate()
         {
-            return this.Time > this._nextSyncInterval;
+            return Time > _nextSyncInterval;
         }
 
         /// <summary>
@@ -221,10 +220,10 @@ namespace JamesFrowen.PositionSync
         /// </summary>
         internal void ClearNeedsUpdate(float interval)
         {
-            this._needsUpdate = false;
-            this._nextSyncInterval = this.Time + interval;
-            this.lastPosition = this.Position;
-            this.lastRotation = this.Rotation;
+            _needsUpdate = false;
+            _nextSyncInterval = Time + interval;
+            lastPosition = Position;
+            lastRotation = Rotation;
         }
 
         /// <summary>
@@ -234,11 +233,11 @@ namespace JamesFrowen.PositionSync
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         bool HasMoved()
         {
-            var moved = Vector3.Distance(this.lastPosition, this.Position) > this.positionSensitivity;
+            bool moved = Vector3.Distance(lastPosition, Position) > positionSensitivity;
 
             if (moved)
             {
-                this.lastPosition = this.Position;
+                lastPosition = Position;
             }
             return moved;
         }
@@ -250,11 +249,11 @@ namespace JamesFrowen.PositionSync
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         bool HasRotated()
         {
-            var rotated = Quaternion.Angle(this.lastRotation, this.Rotation) > this.rotationSensitivity;
+            bool rotated = Quaternion.Angle(lastRotation, Rotation) > rotationSensitivity;
 
             if (rotated)
             {
-                this.lastRotation = this.Rotation;
+                lastRotation = Rotation;
             }
             return rotated;
         }
@@ -262,33 +261,33 @@ namespace JamesFrowen.PositionSync
 
         public override void OnStartClient()
         {
-            this.interpolationTime = new InterpolationTime(this.clientDelay);
-            this._behaviourSet.Add(this);
+            interpolationTime = new InterpolationTime(clientDelay);
+            packer.AddBehaviour(this);
         }
         public override void OnStartServer()
         {
-            this._behaviourSet.Add(this);
+            packer.AddBehaviour(this);
         }
         public override void OnStopClient()
         {
-            this._behaviourSet.Remove(this);
+            packer.RemoveBehaviour(this);
         }
         public override void OnStopServer()
         {
-            this._behaviourSet.Remove(this);
+            packer.RemoveBehaviour(this);
         }
 
         void Update()
         {
-            if (this.isClient)
+            if (isClient)
             {
-                if (this.IsLocalClientInControl)
+                if (IsLocalClientInControl)
                 {
-                    this.ClientAuthorityUpdate();
+                    ClientAuthorityUpdate();
                 }
                 else
                 {
-                    this.ClientInterpolation();
+                    ClientInterpolation();
                 }
             }
         }
@@ -301,15 +300,15 @@ namespace JamesFrowen.PositionSync
         /// <returns></returns>
         bool ServerNeedsToSendUpdate()
         {
-            if (this.IsControlledByServer)
+            if (IsControlledByServer)
             {
-                return this.IsTimeToUpdate() && (this.HasMoved() || this.HasRotated());
+                return IsTimeToUpdate() && (HasMoved() || HasRotated());
             }
             else
             {
                 // dont care about time here, if client authority has sent snapshot then always relay it to other clients
                 // todo do we need a check for attackers sending too many snapshots?
-                return this._needsUpdate;
+                return _needsUpdate;
             }
         }
 
@@ -321,7 +320,7 @@ namespace JamesFrowen.PositionSync
         void AddSnapShotToBuffer(TransformState state, float serverTime)
         {
             // dont apply on local owner
-            if (this.IsLocalClientInControl)
+            if (IsLocalClientInControl)
                 return;
 
             // todo do we need this, or do we set it elsewhere?
@@ -330,11 +329,11 @@ namespace JamesFrowen.PositionSync
             // buffer will be empty if first snapshot or hasn't moved for a while.
             // in this case we can add a snapshot for (serverTime-syncinterval) for interoplation
             // this assumes snapshots are sent in order!
-            if (this.snapshotBuffer.IsEmpty)
+            if (snapshotBuffer.IsEmpty)
             {
-                this.snapshotBuffer.AddSnapShot(this.TransformState, serverTime - this.clientSyncInterval);
+                snapshotBuffer.AddSnapShot(TransformState, serverTime - clientSyncInterval);
             }
-            this.snapshotBuffer.AddSnapShot(state, serverTime);
+            snapshotBuffer.AddSnapShot(state, serverTime);
         }
         #endregion
 
@@ -342,10 +341,10 @@ namespace JamesFrowen.PositionSync
         #region Client Sync Update 
         void ClientAuthorityUpdate()
         {
-            if (this.IsTimeToUpdate() && (this.HasMoved() || this.HasRotated()))
+            if (IsTimeToUpdate() && (HasMoved() || HasRotated()))
             {
-                this.SendMessageToServer();
-                this.ClearNeedsUpdate(this.clientSyncInterval);
+                SendMessageToServer();
+                ClearNeedsUpdate(clientSyncInterval);
             }
         }
 
@@ -354,11 +353,11 @@ namespace JamesFrowen.PositionSync
         {
             // todo dont create new buffer each time
             var bitWriter = new BitWriter(64);
-            this.packer.PackTime(bitWriter, (float)NetworkTime.time);
-            this.packer.PackNext(bitWriter, this);
+            packer.PackTime(bitWriter, (float)NetworkTime.time);
+            packer.PackNext(bitWriter, this);
 
             // todo optimize
-            var temp = bitWriter.ToArray();
+            byte[] temp = bitWriter.ToArray();
 
             NetworkClient.Send(new NetworkPositionSingleMessage
             {
@@ -373,9 +372,9 @@ namespace JamesFrowen.PositionSync
         /// <param name="state"></param>
         void ApplyStateNoInterpolation(TransformState state)
         {
-            this.Position = state.position;
-            this.Rotation = state.rotation;
-            this._needsUpdate = true;
+            Position = state.position;
+            Rotation = state.rotation;
+            _needsUpdate = true;
         }
         #endregion
 
@@ -383,23 +382,23 @@ namespace JamesFrowen.PositionSync
         #region Client Interpolation
         void ClientInterpolation()
         {
-            if (this.snapshotBuffer.IsEmpty) { return; }
+            if (snapshotBuffer.IsEmpty) { return; }
 
-            this.interpolationTime.OnTick(this.DeltaTime);
+            interpolationTime.OnTick(DeltaTime);
 
-            var snapshotTime = this.interpolationTime.ClientTime;
-            var state = this.snapshotBuffer.GetLinearInterpolation(snapshotTime);
-            SimpleLogger.Trace($"p1:{this.Position.x} p2:{state.position.x} delta:{this.Position.x - state.position.x}");
+            float snapshotTime = interpolationTime.ClientTime;
+            TransformState state = snapshotBuffer.GetLinearInterpolation(snapshotTime);
+            SimpleLogger.Trace($"p1:{Position.x} p2:{state.position.x} delta:{Position.x - state.position.x}");
 
 
-            this.Position = state.position;
+            Position = state.position;
 
-            if (this.packer.SyncRotation)
-                this.Rotation = state.rotation;
+            if (packer.SyncRotation)
+                Rotation = state.rotation;
 
             // remove snapshots older than 2times sync interval, they will never be used by Interpolation
-            var removeTime = snapshotTime - (this.clientDelay * 1.5f);
-            this.snapshotBuffer.RemoveOldSnapshots(removeTime);
+            float removeTime = snapshotTime - (clientDelay * 1.5f);
+            snapshotBuffer.RemoveOldSnapshots(removeTime);
         }
         #endregion
     }

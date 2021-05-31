@@ -1,7 +1,7 @@
-using Mirror;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Mirror;
 using UnityEngine;
 
 namespace JamesFrowen.PositionSync.Example
@@ -10,7 +10,6 @@ namespace JamesFrowen.PositionSync.Example
     {
         [Header("References")]
         [SerializeField] SyncPositionSystem system;
-        [SerializeField] SyncPositionBehaviourRuntimeDictionary behaviours;
 
         [Header("Moving objects")]
         [SerializeField] int cubeCount = 10;
@@ -25,16 +24,16 @@ namespace JamesFrowen.PositionSync.Example
         {
             base.Start();
 
-            if (this.autoStartFromCLI)
+            if (autoStartFromCLI)
             {
                 var args = Environment.GetCommandLineArgs().ToList();
-                var addressIndex = args.IndexOf("-address");
+                int addressIndex = args.IndexOf("-address");
                 if (addressIndex != -1)
                 {
                     if (addressIndex + 1 < args.Count)
                     {
-                        var address = args[addressIndex + 1];
-                        this.networkAddress = address;
+                        string address = args[addressIndex + 1];
+                        networkAddress = address;
                     }
                     else
                     {
@@ -42,14 +41,14 @@ namespace JamesFrowen.PositionSync.Example
                     }
                 }
 
-                Application.targetFrameRate = this.serverTickRate;
+                Application.targetFrameRate = serverTickRate;
                 if (args.Contains("-server"))
                 {
-                    this.StartServer();
+                    StartServer();
                 }
                 else if (args.Contains("-client"))
                 {
-                    this.StartClient();
+                    StartClient();
                 }
                 else
                 {
@@ -59,58 +58,58 @@ namespace JamesFrowen.PositionSync.Example
         }
         public override void OnStartClient()
         {
-            this.system.RegisterHandlers();
-            ClientScene.RegisterPrefab(this.cubePrefab);
+            system.RegisterHandlers();
+            NetworkClient.RegisterPrefab(cubePrefab);
         }
 
         public override void OnStartServer()
         {
-            this.system.RegisterHandlers();
-            for (var i = 0; i < this.cubeCount; i++)
+            system.RegisterHandlers();
+            for (int i = 0; i < cubeCount; i++)
             {
-                this.SpawnNewCube();
+                SpawnNewCube();
             }
         }
 
         private void SpawnNewCube()
         {
-            var clone = Instantiate(this.cubePrefab);
+            GameObject clone = Instantiate(cubePrefab);
             NetworkServer.Spawn(clone);
-            this.cubes.Add(clone);
+            cubes.Add(clone);
         }
 
         public override void OnStopClient()
         {
-            this.system.UnregisterHandlers();
-            this.behaviours.Clear();
+            system.UnregisterHandlers();
+            system.packer.ClearBehaviours();
         }
         public override void OnStopServer()
         {
-            this.system.UnregisterHandlers();
-            this.behaviours.Clear();
+            system.UnregisterHandlers();
+            system.packer.ClearBehaviours();
         }
 
         public override void OnApplicationQuit()
         {
             base.OnApplicationQuit();
-            this.behaviours.Clear();
+            system.packer.ClearBehaviours();
         }
 
         private void OnGUI()
         {
-            if (!this.showGUI) { return; }
+            if (!showGUI) { return; }
             if (!NetworkServer.active) { return; }
 
-            using (new GUILayout.AreaScope(this.guiRect))
+            using (new GUILayout.AreaScope(guiRect))
             {
-                GUILayout.Label($"Cube Count: {this.cubes.Count}");
+                GUILayout.Label($"Cube Count: {cubes.Count}");
                 if (GUILayout.Button("Add Cube"))
                 {
-                    this.SpawnNewCube();
+                    SpawnNewCube();
                 }
                 if (GUILayout.Button("Remove Cube"))
                 {
-                    if (this.cubes.Count > 0) { this.cubes.RemoveAt(this.cubes.Count - 1); }
+                    if (cubes.Count > 0) { cubes.RemoveAt(cubes.Count - 1); }
                 }
             }
         }
