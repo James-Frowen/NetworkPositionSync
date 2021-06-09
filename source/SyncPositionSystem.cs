@@ -21,6 +21,8 @@ namespace JamesFrowen.PositionSync
         [NonSerialized] float nextSyncInterval;
         HashSet<SyncPositionBehaviour> toUpdate = new HashSet<SyncPositionBehaviour>();
 
+        bool handlersAreRegistered;
+
 
         private void OnDrawGizmos()
         {
@@ -30,6 +32,9 @@ namespace JamesFrowen.PositionSync
 
         public void RegisterHandlers()
         {
+            if (handlersAreRegistered) { return; }
+            handlersAreRegistered = true;
+
             // todo find a way to register these handles so it doesn't need to be done from NetworkManager
             if (NetworkClient.active)
             {
@@ -44,6 +49,9 @@ namespace JamesFrowen.PositionSync
 
         public void UnregisterHandlers()
         {
+            if (!handlersAreRegistered) { return; }
+            handlersAreRegistered = false;
+
             // todo find a way to unregister these handles so it doesn't need to be done from NetworkManager
             if (NetworkClient.active)
             {
@@ -122,6 +130,7 @@ namespace JamesFrowen.PositionSync
             packer.PackCount(bitWriter, toUpdate.Count);
             foreach (SyncPositionBehaviour behaviour in toUpdate)
             {
+                SimpleLogger.Debug($"Time {time:0.000}, Packing {behaviour.name}");
                 packer.PackNext(bitWriter, behaviour);
 
                 // todo handle client authority updates better

@@ -15,7 +15,25 @@ namespace JamesFrowen.PositionSync
     public class SyncPositionBehaviour : NetworkBehaviour
     {
         #region ISyncPositionBehaviour
-        internal bool NeedsUpdate() => ServerNeedsToSendUpdate();
+
+        /// <summary>
+        /// Checks if object needs syncing to clients
+        /// <para>Called on server</para>
+        /// </summary>
+        /// <returns></returns>
+        internal bool NeedsUpdate()
+        {
+            if (IsControlledByServer)
+            {
+                return IsTimeToUpdate() && (HasMoved() || HasRotated());
+            }
+            else
+            {
+                // dont care about time here, if client authority has sent snapshot then always relay it to other clients
+                // todo do we need a check for attackers sending too many snapshots?
+                return _needsUpdate;
+            }
+        }
 
 
         internal void ApplyOnServer(TransformState state, float time)
@@ -23,6 +41,8 @@ namespace JamesFrowen.PositionSync
             // this should not happen, Exception to disconnect attacker
             if (!clientAuthority) { throw new InvalidOperationException("Client is not allowed to send updated when clientAuthority is false"); }
 
+            // see comment in NeedsUpdate 
+            _needsUpdate = true;
             _latestState = state;
 
             // if host apply using interpolation otherwise apply exact 
@@ -88,12 +108,10 @@ namespace JamesFrowen.PositionSync
         /// </summary>
         bool _needsUpdate;
 
-        uint? parentId;
-
         /// <summary>
         /// latest values from client
         /// </summary>
-        TransformState _latestState;
+        TransformState? _latestState;
 
         float _nextSyncInterval;
 
@@ -137,15 +155,6 @@ namespace JamesFrowen.PositionSync
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => clientAuthority && hasAuthority;
-        }
-
-        /// <summary>
-        /// is this server/client in control of the object
-        /// </summary>
-        bool InControl
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => (isServer && IsControlledByServer) || (isClient && IsLocalClientInControl);
         }
 
         Vector3 Position
@@ -193,7 +202,9 @@ namespace JamesFrowen.PositionSync
         public TransformState TransformState
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => new TransformState(Position, Rotation);
+            // in client auth, we want to use the state given by the client.
+            // that will be _latestState,
+            get => _latestState ?? new TransformState(Position, Rotation);
         }
 
         float Time
@@ -221,6 +232,7 @@ namespace JamesFrowen.PositionSync
         internal void ClearNeedsUpdate(float interval)
         {
             _needsUpdate = false;
+            _latestState = null;
             _nextSyncInterval = Time + interval;
             lastPosition = Position;
             lastRotation = Rotation;
@@ -262,7 +274,8 @@ namespace JamesFrowen.PositionSync
         public override void OnStartClient()
         {
             interpolationTime = new InterpolationTime(clientDelay);
-            packer.AddBehaviour(this);
+            if (!NetworkServer.active) // dont add twice in host mode
+                packer.AddBehaviour(this);
         }
         public override void OnStartServer()
         {
@@ -270,7 +283,8 @@ namespace JamesFrowen.PositionSync
         }
         public override void OnStopClient()
         {
-            packer.RemoveBehaviour(this);
+            if (!NetworkServer.active) // dont remove twice in host mode
+                packer.RemoveBehaviour(this);
         }
         public override void OnStopServer()
         {
@@ -293,24 +307,6 @@ namespace JamesFrowen.PositionSync
         }
 
         #region Server Sync Update
-        /// <summary>
-        /// Checks if object needs syncing to clients
-        /// <para>Called on server</para>
-        /// </summary>
-        /// <returns></returns>
-        bool ServerNeedsToSendUpdate()
-        {
-            if (IsControlledByServer)
-            {
-                return IsTimeToUpdate() && (HasMoved() || HasRotated());
-            }
-            else
-            {
-                // dont care about time here, if client authority has sent snapshot then always relay it to other clients
-                // todo do we need a check for attackers sending too many snapshots?
-                return _needsUpdate;
-            }
-        }
 
         /// <summary>
         /// Applies values to target transform on client
@@ -331,7 +327,8 @@ namespace JamesFrowen.PositionSync
             // this assumes snapshots are sent in order!
             if (snapshotBuffer.IsEmpty)
             {
-                snapshotBuffer.AddSnapShot(TransformState, serverTime - clientSyncInterval);
+                // use new state here instead of TranformState incase update is from client auth when runing in host mode
+                snapshotBuffer.AddSnapShot(new TransformState(Position, Rotation), serverTime - clientSyncInterval);
             }
             snapshotBuffer.AddSnapShot(state, serverTime);
         }
@@ -341,6 +338,9 @@ namespace JamesFrowen.PositionSync
         #region Client Sync Update 
         void ClientAuthorityUpdate()
         {
+            // host client doesn't need to update server
+            if (isServer) { return; }
+
             if (IsTimeToUpdate() && (HasMoved() || HasRotated()))
             {
                 SendMessageToServer();
@@ -374,7 +374,6 @@ namespace JamesFrowen.PositionSync
         {
             Position = state.position;
             Rotation = state.rotation;
-            _needsUpdate = true;
         }
         #endregion
 
