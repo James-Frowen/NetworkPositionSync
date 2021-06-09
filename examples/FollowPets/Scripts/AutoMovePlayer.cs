@@ -11,6 +11,8 @@ namespace JamesFrowen.NetworkPositionSync.Examples.FollowPets
         [SerializeField] float speed = 2;
         [SerializeField] float pauseTime = 5;
 
+        [SerializeField] new Renderer renderer;
+
         Vector3 target;
 
         static int playerCount;
@@ -23,6 +25,8 @@ namespace JamesFrowen.NetworkPositionSync.Examples.FollowPets
         {
             Debug.Log("Starting MoveRandomly");
             StartCoroutine(MoveRandomly());
+
+            renderer.material.color = Color.cyan;
         }
 
         private IEnumerator MoveRandomly()
