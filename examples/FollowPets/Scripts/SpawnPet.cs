@@ -14,6 +14,14 @@ namespace JamesFrowen.NetworkPositionSync.Examples.FollowPets
 
         int current = 0;
 
+        private void OnValidate()
+        {
+            if (minPets > maxPets)
+            {
+                Debug.LogWarning("Min can not be greater than max");
+                minPets = maxPets;
+            }
+        }
         public void ServerStarted()
         {
             for (int i = 0; i < minPets; i++)
@@ -36,7 +44,7 @@ namespace JamesFrowen.NetworkPositionSync.Examples.FollowPets
         public void PlayerConnected(NetworkConnection _)
         {
             int playerCount = NetworkServer.connections.Count;
-            float targetPetCount = playerCount * petMultiple;
+            float targetPetCount = Mathf.Min(playerCount * petMultiple, maxPets);
             while (targetPetCount > current)
             {
                 SpawnOne();
