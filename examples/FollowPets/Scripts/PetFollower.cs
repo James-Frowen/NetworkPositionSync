@@ -6,9 +6,16 @@ namespace JamesFrowen.NetworkPositionSync.Examples.FollowPets
     [RequireComponent(typeof(Collider))]
     public class PetFollower : NetworkBehaviour
     {
-        [SerializeField] float speed = 1.5f;
+        [SerializeField] float minSpeed = 1.5f;
+        [SerializeField] float maxSpeed = 1.5f;
+        float speed;
         Transform target;
         bool hasTarget;
+
+        private void Awake()
+        {
+            speed = Random.Range(minSpeed, maxSpeed);
+        }
 
         [ServerCallback()]
         private void OnTriggerEnter(Collider other)
@@ -47,6 +54,7 @@ namespace JamesFrowen.NetworkPositionSync.Examples.FollowPets
             if (hasTarget)
             {
                 transform.position = Vector3.MoveTowards(transform.position, target.position, speed * Time.deltaTime);
+                transform.forward = ((target.position - transform.position) + (target.forward * 0.1f)).normalized;
             }
         }
     }

@@ -121,34 +121,6 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 23800000, guid: 2dd8688ec3c431844adccf4b29cb69b3, type: 2}
---- !u!1 &209781998 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 8884906697866078237, guid: 96033178e4652f14286938d9c52dffd5,
-    type: 3}
-  m_PrefabInstance: {fileID: 552806059}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &209781999
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 209781998}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6b0fecffa3f624585964b0d0eb21b18e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  Port: 7777
-  NoDelay: 1
-  Interval: 10
-  FastResend: 2
-  CongestionWindow: 0
-  SendWindowSize: 4096
-  ReceiveWindowSize: 4096
-  debugLog: 0
-  statisticsGUI: 0
-  statisticsLog: 0
 --- !u!1 &240630256
 GameObject:
   m_ObjectHideFlags: 0
@@ -398,54 +370,12 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 8884906697866078227, guid: 96033178e4652f14286938d9c52dffd5,
-        type: 3}
-      propertyPath: networkAddress
-      value: localhost
-      objectReference: {fileID: 0}
-    - target: {fileID: 8884906697866078227, guid: 96033178e4652f14286938d9c52dffd5,
-        type: 3}
-      propertyPath: autoStartClient
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 8884906697866078227, guid: 96033178e4652f14286938d9c52dffd5,
-        type: 3}
-      propertyPath: showGUI
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8884906697866078227, guid: 96033178e4652f14286938d9c52dffd5,
-        type: 3}
-      propertyPath: autoStartServerBuild
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8884906697866078227, guid: 96033178e4652f14286938d9c52dffd5,
-        type: 3}
-      propertyPath: playerPrefab
-      value: 
-      objectReference: {fileID: 422637025057733891, guid: 67659c038c004454e8d869019041c4df,
-        type: 3}
-    - target: {fileID: 8884906697866078227, guid: 96033178e4652f14286938d9c52dffd5,
-        type: 3}
-      propertyPath: autoStartFromCLI
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 8884906697866078227, guid: 96033178e4652f14286938d9c52dffd5,
-        type: 3}
-      propertyPath: maxConnections
-      value: 20000
-      objectReference: {fileID: 0}
-    - target: {fileID: 8884906697866078227, guid: 96033178e4652f14286938d9c52dffd5,
-        type: 3}
-      propertyPath: transport
-      value: 
-      objectReference: {fileID: 209781999}
     - target: {fileID: 8884906697866078237, guid: 96033178e4652f14286938d9c52dffd5,
         type: 3}
       propertyPath: m_Name
       value: ExampleNetworkManager
       objectReference: {fileID: 0}
-    m_RemovedComponents:
-    - {fileID: 8884906697866078236, guid: 96033178e4652f14286938d9c52dffd5, type: 3}
+    m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 96033178e4652f14286938d9c52dffd5, type: 3}
 --- !u!1 &562270577
 GameObject:

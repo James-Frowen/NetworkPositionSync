@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using JamesFrowen.Logging;
 using Mirror;
 using UnityEngine;
 using BitReader = JamesFrowen.BitPacking.NetworkReader;
@@ -17,6 +19,8 @@ namespace JamesFrowen.PositionSync
         public SyncPositionPacker packer;
 
         [NonSerialized] float nextSyncInterval;
+        HashSet<SyncPositionBehaviour> toUpdate = new HashSet<SyncPositionBehaviour>();
+
 
         private void OnDrawGizmos()
         {
@@ -92,35 +96,37 @@ namespace JamesFrowen.PositionSync
 
             // todo dont create new buffer each time
             var bitWriter = new BitWriter(packer.Behaviours.Count * 32);
-            bool anyNeedUpdate = PackBehaviours(bitWriter, (float)NetworkTime.time);
+            PackBehaviours(bitWriter, (float)NetworkTime.time);
 
-            // dont send anything if nothing was written (eg, nothing dirty)
-            if (!anyNeedUpdate) { return; }
-
-            byte[] tempBuffer = new byte[1300];
+            // always send even if no behaviours so that time is sent
+            var segment = bitWriter.ToArraySegment();
             NetworkServer.SendToAll(new NetworkPositionMessage
             {
-                payload = new ArraySegment<byte>(tempBuffer)
+                payload = segment
             });
         }
 
-        internal bool PackBehaviours(BitWriter bitWriter, float time)
+        internal void PackBehaviours(BitWriter bitWriter, float time)
         {
             packer.PackTime(bitWriter, time);
-            bool anyNeedUpdate = false;
+
+            toUpdate.Clear();
             foreach (SyncPositionBehaviour behaviour in packer.Behaviours.Values)
             {
                 if (!behaviour.NeedsUpdate())
                     continue;
 
-                anyNeedUpdate = true;
+                toUpdate.Add(behaviour);
+            }
 
+            packer.PackCount(bitWriter, toUpdate.Count);
+            foreach (SyncPositionBehaviour behaviour in toUpdate)
+            {
                 packer.PackNext(bitWriter, behaviour);
 
                 // todo handle client authority updates better
                 behaviour.ClearNeedsUpdate(packer.syncInterval);
             }
-            return anyNeedUpdate;
         }
 
         internal void ClientHandleNetworkPositionMessage(NetworkPositionMessage msg)
@@ -165,7 +171,6 @@ namespace JamesFrowen.PositionSync
         /// <param name="arg2"></param>
         internal void ServerHandleNetworkPositionMessage(NetworkConnection _conn, NetworkPositionSingleMessage msg)
         {
-            int length = msg.payload.Count;
             // todo stop alloc
             using (var bitReader = new BitReader())
             {
@@ -177,6 +182,10 @@ namespace JamesFrowen.PositionSync
                 if (packer.Behaviours.TryGetValue(id, out SyncPositionBehaviour behaviour))
                 {
                     behaviour.ApplyOnServer(new TransformState(pos, rot), time);
+                }
+                else
+                {
+                    SimpleLogger.DebugWarn($"Could not find behaviour with id {id}");
                 }
             }
         }

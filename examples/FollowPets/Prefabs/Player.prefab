@@ -350,7 +350,7 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0.1
   packer: {fileID: 11400000, guid: 4465bfc6be1b9204f8b8da7e4935406d, type: 2}
-  target: {fileID: 3591390257364612083, guid: 2db362f8e3f82e44da5c37d51e18fee8, type: 3}
+  target: {fileID: 4692286623575964889}
   clientAuthority: 1
   useLocalSpace: 1
   positionSensitivity: 0.1
@@ -374,7 +374,7 @@ MonoBehaviour:
   syncInterval: 0.1
   bounds: {x: 50, y: 1, z: 50}
   distanceToTarget: 0.1
-  speed: 2.5
+  speed: 5
   pauseTime: 5
 --- !u!54 &8188037385308621992
 Rigidbody:

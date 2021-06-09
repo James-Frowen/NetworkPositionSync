@@ -103,7 +103,8 @@ namespace JamesFrowen.PositionSync
         [Header("Sync")]
         [Tooltip("How often 1 behaviour should update")]
         public float syncInterval = 0.1f;
-        [Tooltip("Check if behaviours need update every frame, If false then checks every syncInterval")]
+
+    [Tooltip("Check if behaviours need update every frame, If false then checks every syncInterval")]
         public bool checkEveryFrame = true;
         [Tooltip("Skips Visibility and sends position to all ready connections")]
         public bool sendToAll = true;
@@ -187,6 +188,11 @@ namespace JamesFrowen.PositionSync
         {
             timePacker.Pack(writer, time);
         }
+        public void PackCount(BitWriter writer, int count)
+        {
+            countPacker.Pack(writer, (uint)count);
+        }
+
 
         public void PackNext(BitWriter writer, SyncPositionBehaviour behaviour)
         {

@@ -40,6 +40,8 @@ namespace JamesFrowen.NetworkPositionSync.Examples.FollowPets
 
         private void StartClient(List<string> args)
         {
+            if (NetworkClient.active || NetworkServer.active) { return; }
+
             int indexOf = args.IndexOf("-client");
             string address = args[indexOf + 1];
             Debug.Log("Starting Client");
@@ -49,6 +51,8 @@ namespace JamesFrowen.NetworkPositionSync.Examples.FollowPets
 
         private void StartServer()
         {
+            if (NetworkClient.active || NetworkServer.active) { return; }
+
             Debug.Log("Starting Server");
             NetworkManager.singleton.StartServer();
         }

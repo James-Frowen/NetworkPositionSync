@@ -180,7 +180,7 @@ SphereCollider:
   m_IsTrigger: 1
   m_Enabled: 1
   serializedVersion: 2
-  m_Radius: 8
+  m_Radius: 16
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!114 &6310988178523814211
 MonoBehaviour:
@@ -196,7 +196,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   syncMode: 0
   syncInterval: 0.1
-  speed: 1
+  minSpeed: 1
+  maxSpeed: 4
 --- !u!54 &9165840434549035693
 Rigidbody:
   m_ObjectHideFlags: 0
