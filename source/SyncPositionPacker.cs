@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using JamesFrowen.BitPacking;
 using JamesFrowen.Logging;
+using Mirror;
 using UnityEngine;
 using BitReader = JamesFrowen.BitPacking.NetworkReader;
 using BitWriter = JamesFrowen.BitPacking.NetworkWriter;
@@ -94,11 +95,20 @@ namespace JamesFrowen.PositionSync
     public class SyncPositionPacker : ScriptableObject
     {
         [Header("Compression Settings")]
-        [SerializeField] SyncSettings settings;
+        [SerializeField] SyncSettings settings = new SyncSettings();
 
         [Header("Position Debug And Gizmo")]
-        [SerializeField] SyncSettingsDebug settingsDebug;
+        [SerializeField] SyncSettingsDebug settingsDebug = new SyncSettingsDebug();
 
+        [Header("Sync")]
+        [Tooltip("How often 1 behaviour should update")]
+        public float syncInterval = 0.1f;
+        [Tooltip("Check if behaviours need update every frame, If false then checks every syncInterval")]
+        public bool checkEveryFrame = true;
+        [Tooltip("Skips Visibility and sends position to all ready connections")]
+        public bool sendToAll = true;
+        [Tooltip("Create new system object if missing when first Behaviour is added")]
+        public bool CreateSystemIfMissing = false;
 
 
         // packers
@@ -110,12 +120,34 @@ namespace JamesFrowen.PositionSync
 
 
         [NonSerialized] internal Dictionary<uint, SyncPositionBehaviour> Behaviours = new Dictionary<uint, SyncPositionBehaviour>();
-        private SyncPositionSystem system;
+        private SyncPositionSystem _system;
 
         public bool SyncRotation
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => settings.syncRotation;
+        }
+        public void SetSystem(SyncPositionSystem value)
+        {
+            if (value == null) throw new ArgumentNullException(nameof(value));
+            if (_system != null) throw new InvalidOperationException($"SyncPositionPacker[{name}] Can not set System to {value} because it was already equal to {_system}");
+
+            _system = value;
+        }
+        public void ClearSystem(SyncPositionSystem oldValue)
+        {
+            if (oldValue == null) throw new ArgumentNullException(nameof(oldValue));
+            if (_system != oldValue) throw new InvalidOperationException($"SyncPositionPacker[{name}] Can not clear System from {_system} because the old value was not equal to {oldValue}");
+
+            _system = null;
+        }
+
+        public void CheckIfSysteIsMissing()
+        {
+            if (!CreateSystemIfMissing) return;
+            if (_system != null) return;
+
+            _system = NetworkManager.singleton.gameObject.AddComponent<SyncPositionSystem>();
         }
 
         private void OnEnable()
@@ -130,6 +162,12 @@ namespace JamesFrowen.PositionSync
         private void OnValidate()
         {
             settingsDebug.SetValues(settings);
+
+            if (!sendToAll)
+            {
+                sendToAll = true;
+                UnityEngine.Debug.LogWarning("sendToAll disabled is not implemented yet");
+            }
         }
 
         [Conditional("UNITY_EDITOR")]

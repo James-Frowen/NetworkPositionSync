@@ -16,25 +16,7 @@ namespace JamesFrowen.PositionSync
         [Header("Reference")]
         public SyncPositionPacker packer;
 
-        [Header("Sync")]
-        [Tooltip("How often 1 behaviour should update")]
-        public float syncInterval = 0.1f;
-        [Tooltip("Check if behaviours need update every frame, If false then checks every syncInterval")]
-        public bool checkEveryFrame = true;
-        [Tooltip("Skips Visibility and sends position to all ready connections")]
-        public bool sendToAll = true;
-
         [NonSerialized] float nextSyncInterval;
-
-
-        private void OnValidate()
-        {
-            if (!sendToAll)
-            {
-                sendToAll = true;
-                UnityEngine.Debug.LogWarning("sendToAll disabled is not implemented yet");
-            }
-        }
 
         private void OnDrawGizmos()
         {
@@ -70,11 +52,20 @@ namespace JamesFrowen.PositionSync
             }
         }
 
+        private void Awake()
+        {
+            packer.SetSystem(this);
+        }
+        private void OnDestroy()
+        {
+            packer.ClearSystem(this);
+        }
+
         #region Sync Server -> Client
         [ServerCallback]
         private void LateUpdate()
         {
-            if (checkEveryFrame || ShouldSync())
+            if (packer.checkEveryFrame || ShouldSync())
             {
                 SendUpdateToAll();
             }
@@ -85,7 +76,7 @@ namespace JamesFrowen.PositionSync
             float now = Time.time;
             if (now > nextSyncInterval)
             {
-                nextSyncInterval += syncInterval;
+                nextSyncInterval += packer.syncInterval;
                 return true;
             }
             else
@@ -127,7 +118,7 @@ namespace JamesFrowen.PositionSync
                 packer.PackNext(bitWriter, behaviour);
 
                 // todo handle client authority updates better
-                behaviour.ClearNeedsUpdate(syncInterval);
+                behaviour.ClearNeedsUpdate(packer.syncInterval);
             }
             return anyNeedUpdate;
         }
