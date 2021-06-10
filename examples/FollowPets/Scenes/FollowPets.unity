@@ -627,7 +627,7 @@ MonoBehaviour:
   prefab: {fileID: 4830868967063030469, guid: 2db362f8e3f82e44da5c37d51e18fee8, type: 3}
   bounds: {x: 50, y: 2, z: 50}
   minPets: 10
-  maxPets: 0
+  maxPets: 200
   petMultiple: 1
 --- !u!114 &1708969558
 MonoBehaviour:
@@ -684,7 +684,7 @@ MonoBehaviour:
   playerSpawnMethod: 0
   spawnPrefabs:
   - {fileID: 4830868967063030469, guid: 2db362f8e3f82e44da5c37d51e18fee8, type: 3}
-  logLevel: 3
+  logLevel: 2
 --- !u!4 &1708969560
 Transform:
   m_ObjectHideFlags: 0
