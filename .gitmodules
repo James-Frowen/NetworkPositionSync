@@ -1,9 +1,6 @@
 [submodule "modules/BitPacking"]
 	path = modules/BitPacking
 	url = git@github.com:James-Frowen/BitPacking.git
-[submodule "modules/ScriptableVariables"]
-	path = modules/ScriptableVariables
-	url = git@github.com:James-Frowen/ScriptableVariables.git
 [submodule "modules/SimpleLogger"]
 	path = modules/SimpleLogger
 	url = git@github.com:James-Frowen/SimpleLogger.git
