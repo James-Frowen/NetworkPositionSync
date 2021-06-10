@@ -1,0 +1,59 @@
+name: Release
+
+on: 
+  push:
+    branches:
+     - main
+    paths-ignore:
+      - 'doc/**'
+      - '*.md'
+  
+jobs:
+  Release:
+    env:
+      TARGET_PATH: Assets/NetworkPositionSync
+    runs-on: windows-latest
+    # needs: Tests
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '3.1.100'
+  
+      - name: Install unity-packer
+        run: dotnet tool install -g unity-packer
+  
+      - name: Package
+
+        run: >-
+          unity-packer pack NetworkPositionSync.unitypackage 
+          source ${{ env.TARGET_PATH }}/scripts
+          LICENSE ${{ env.TARGET_PATH }}/LICENSE 
+          README.md ${{ env.TARGET_PATH }}/README.md
+          modules/BitPacking/JamesFrowen.BitPacking/Source ${{ env.TARGET_PATH }}/modules/BitPacking
+          modules/BitPacking/README.md ${{ env.TARGET_PATH }}/modules/BitPacking/README.md
+          modules/BitPacking/LICENSE ${{ env.TARGET_PATH }}/modules/BitPacking/LICENSE
+          modules/SimpleLogger/source ${{ env.TARGET_PATH }}/modules/SimpleLogger
+          modules/SimpleLogger/LICENSE ${{ env.TARGET_PATH }}/modules/SimpleLogger/LICENSE
+          
+      - uses: actions/upload-artifact@v1
+        with:
+          name: NetworkPositionSync.unitypackage
+          path: NetworkPositionSync.unitypackage
+
+      - name: Release
+        uses: cycjimmy/semantic-release-action@v2
+        with:
+          extra_plugins: |
+            @semantic-release/exec
+            @semantic-release/changelog
+            @semantic-release/git
+          branch: main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

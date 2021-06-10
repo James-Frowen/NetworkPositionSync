@@ -13,9 +13,9 @@
             "path": "@semantic-release/github",
             "assets": [
                 {
-                    "path": "MirrorPositionSync.unitypackage",
-                    "label": "MirrorPositionSync Unity Package",
-                    "name": "MirrorPositionSync-${nextRelease.version}.unitypackage"
+                    "path": "NetworkPositionSync.unitypackage",
+                    "label": "NetworkPositionSync Unity Package",
+                    "name": "NetworkPositionSync-${nextRelease.version}.unitypackage"
                 }
             ]
         }
