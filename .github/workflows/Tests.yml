@@ -13,6 +13,7 @@ on:
   
 jobs:
   Tests:
+    if: false
     name: Test
     runs-on: ubuntu-latest
     env:
