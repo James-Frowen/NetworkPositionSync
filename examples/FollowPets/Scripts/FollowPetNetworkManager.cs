@@ -24,12 +24,12 @@ namespace JamesFrowen.NetworkPositionSync.Examples.FollowPets
         {
             base.OnStartServer();
             spawnPet.ServerStarted();
-            syncPostionSystem.RegisterHandlers();
+            syncPostionSystem.RegisterServerHandlers();
         }
         public override void OnStopServer()
         {
             base.OnStopServer();
-            syncPostionSystem.UnregisterHandlers();
+            syncPostionSystem.UnregisterServerHandlers();
         }
 
         public override void OnServerConnect(NetworkConnection conn)
@@ -41,12 +41,12 @@ namespace JamesFrowen.NetworkPositionSync.Examples.FollowPets
         public override void OnStartClient()
         {
             base.OnStartClient();
-            syncPostionSystem.RegisterHandlers();
+            syncPostionSystem.RegisterClientHandlers();
         }
         public override void OnStopClient()
         {
             base.OnStopClient();
-            syncPostionSystem.UnregisterHandlers();
+            syncPostionSystem.UnregisterClientHandlers();
         }
     }
 }

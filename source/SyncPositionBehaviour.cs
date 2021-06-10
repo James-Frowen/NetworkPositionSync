@@ -65,12 +65,6 @@ namespace JamesFrowen.PositionSync
 
             AddSnapShotToBuffer(state, time);
         }
-
-        // todo check we need this
-        internal void OnServerTime(float serverTime)
-        {
-            interpolationTime.OnMessage(serverTime);
-        }
         #endregion
 
 
@@ -94,9 +88,6 @@ namespace JamesFrowen.PositionSync
         [Tooltip("How far rotation has to move before it is synced")]
         [SerializeField] float rotationSensitivity = 0.1f;
 
-        [Header("Snapshot Interpolation")]
-        [Tooltip("Delay to add to client time to make sure there is always a snapshot to interpolate towards. High delay can handle more jitter, but adds latancy to the position.")]
-        [SerializeField] float clientDelay = 0.2f;
 
         [Tooltip("Client Authority Sync Interval")]
         [SerializeField] float clientSyncInterval = 0.1f;
@@ -121,14 +112,14 @@ namespace JamesFrowen.PositionSync
 
         // client
         readonly SnapshotBuffer snapshotBuffer = new SnapshotBuffer();
-        InterpolationTime interpolationTime;
+       
 
         void OnGUI()
         {
             if (showDebugGui)
             {
-                GUILayout.Label($"ServerTime: {interpolationTime.ServerTime}");
-                GUILayout.Label($"LocalTime: {interpolationTime.ClientTime}");
+                GUILayout.Label($"ServerTime: {packer.InterpolationTime.ServerTime:0.000}");
+                GUILayout.Label($"LocalTime: {packer.InterpolationTime.ClientTime:0.000}");
                 GUILayout.Label(snapshotBuffer.ToString());
             }
         }
@@ -207,22 +198,11 @@ namespace JamesFrowen.PositionSync
             get => _latestState ?? new TransformState(Position, Rotation);
         }
 
-        float Time
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => UnityEngine.Time.unscaledTime;
-        }
-
-        float DeltaTime
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => UnityEngine.Time.unscaledDeltaTime;
-        }
-
+    
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         bool IsTimeToUpdate()
         {
-            return Time > _nextSyncInterval;
+            return packer.Time > _nextSyncInterval;
         }
 
         /// <summary>
@@ -233,7 +213,7 @@ namespace JamesFrowen.PositionSync
         {
             _needsUpdate = false;
             _latestState = null;
-            _nextSyncInterval = Time + interval;
+            _nextSyncInterval = packer.Time + interval;
             lastPosition = Position;
             lastRotation = Rotation;
         }
@@ -273,7 +253,6 @@ namespace JamesFrowen.PositionSync
 
         public override void OnStartClient()
         {
-            interpolationTime = new InterpolationTime(clientDelay);
             if (!NetworkServer.active) // dont add twice in host mode
                 packer.AddBehaviour(this);
         }
@@ -383,9 +362,8 @@ namespace JamesFrowen.PositionSync
         {
             if (snapshotBuffer.IsEmpty) { return; }
 
-            interpolationTime.OnTick(DeltaTime);
 
-            float snapshotTime = interpolationTime.ClientTime;
+            float snapshotTime = packer.InterpolationTime.ClientTime;
             TransformState state = snapshotBuffer.GetLinearInterpolation(snapshotTime);
             SimpleLogger.Trace($"p1:{Position.x} p2:{state.position.x} delta:{Position.x - state.position.x}");
 
@@ -396,7 +374,7 @@ namespace JamesFrowen.PositionSync
                 Rotation = state.rotation;
 
             // remove snapshots older than 2times sync interval, they will never be used by Interpolation
-            float removeTime = snapshotTime - (clientDelay * 1.5f);
+            float removeTime = snapshotTime - (packer.ClientDelay * 1.5f);
             snapshotBuffer.RemoveOldSnapshots(removeTime);
         }
         #endregion

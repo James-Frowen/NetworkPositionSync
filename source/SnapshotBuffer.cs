@@ -170,10 +170,10 @@ namespace JamesFrowen.PositionSync
             if (buffer.Count == 0) { return "Buffer Empty"; }
 
             StringBuilder builder = new StringBuilder();
-            builder.AppendLine($"count:{buffer.Count}, minTime:{buffer[0].time}, maxTime:{buffer[buffer.Count - 1].time}");
+            builder.AppendLine($"count:{buffer.Count}, minTime:{buffer[0].time:0.000}, maxTime:{buffer[buffer.Count - 1].time:0.000}");
             for (int i = 0; i < buffer.Count; i++)
             {
-                builder.AppendLine($"  {i}: {buffer[i].time}");
+                builder.AppendLine($"  {i}: {buffer[i].time:0.000}");
             }
             return builder.ToString();
         }

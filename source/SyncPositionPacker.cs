@@ -100,11 +100,15 @@ namespace JamesFrowen.PositionSync
         [Header("Position Debug And Gizmo")]
         [SerializeField] SyncSettingsDebug settingsDebug = new SyncSettingsDebug();
 
+        [Header("Snapshot Interpolation")]
+        [Tooltip("Delay to add to client time to make sure there is always a snapshot to interpolate towards. High delay can handle more jitter, but adds latancy to the position.")]
+        [SerializeField] float _clientDelay = 0.2f;
+
         [Header("Sync")]
         [Tooltip("How often 1 behaviour should update")]
         public float syncInterval = 0.1f;
 
-    [Tooltip("Check if behaviours need update every frame, If false then checks every syncInterval")]
+        [Tooltip("Check if behaviours need update every frame, If false then checks every syncInterval")]
         public bool checkEveryFrame = true;
         [Tooltip("Skips Visibility and sends position to all ready connections")]
         public bool sendToAll = true;
@@ -118,10 +122,35 @@ namespace JamesFrowen.PositionSync
         [NonSerialized] internal UIntVariablePacker idPacker;
         [NonSerialized] internal PositionPacker positionPacker;
         [NonSerialized] internal QuaternionPacker rotationPacker;
+        [NonSerialized] InterpolationTime interpolationTime;
 
+        public InterpolationTime InterpolationTime
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => interpolationTime;
+        }
+        public float ClientDelay
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _clientDelay;
+        }
 
         [NonSerialized] internal Dictionary<uint, SyncPositionBehaviour> Behaviours = new Dictionary<uint, SyncPositionBehaviour>();
         private SyncPositionSystem _system;
+
+        public float Time
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => UnityEngine.Time.unscaledTime;
+        }
+
+        public float DeltaTime
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => UnityEngine.Time.unscaledDeltaTime;
+        }
+
+
 
         public bool SyncRotation
         {
@@ -158,6 +187,7 @@ namespace JamesFrowen.PositionSync
             idPacker = settings.CreateIdPacker();
             positionPacker = settings.CreatePositionPacker();
             rotationPacker = settings.CreateRotationPacker();
+            interpolationTime = new InterpolationTime(_clientDelay);
         }
 
         private void OnValidate()

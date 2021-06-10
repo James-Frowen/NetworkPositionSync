@@ -58,13 +58,13 @@ namespace JamesFrowen.PositionSync.Example
         }
         public override void OnStartClient()
         {
-            system.RegisterHandlers();
+            system.RegisterClientHandlers();
             NetworkClient.RegisterPrefab(cubePrefab);
         }
 
         public override void OnStartServer()
         {
-            system.RegisterHandlers();
+            system.RegisterServerHandlers();
             for (int i = 0; i < cubeCount; i++)
             {
                 SpawnNewCube();
@@ -80,12 +80,12 @@ namespace JamesFrowen.PositionSync.Example
 
         public override void OnStopClient()
         {
-            system.UnregisterHandlers();
+            system.UnregisterClientHandlers();
             system.packer.ClearBehaviours();
         }
         public override void OnStopServer()
         {
-            system.UnregisterHandlers();
+            system.UnregisterServerHandlers();
             system.packer.ClearBehaviours();
         }
 

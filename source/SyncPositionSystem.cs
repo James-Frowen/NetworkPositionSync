@@ -21,43 +21,40 @@ namespace JamesFrowen.PositionSync
         [NonSerialized] float nextSyncInterval;
         HashSet<SyncPositionBehaviour> toUpdate = new HashSet<SyncPositionBehaviour>();
 
-        bool handlersAreRegistered;
-
-
         private void OnDrawGizmos()
         {
             if (packer != null)
                 packer.DrawGizmo();
         }
 
-        public void RegisterHandlers()
+        public void RegisterClientHandlers()
         {
-            if (handlersAreRegistered) { return; }
-            handlersAreRegistered = true;
-
             // todo find a way to register these handles so it doesn't need to be done from NetworkManager
             if (NetworkClient.active)
             {
                 NetworkClient.RegisterHandler<NetworkPositionMessage>(ClientHandleNetworkPositionMessage);
             }
-
+        }
+        public void RegisterServerHandlers()
+        {
+            // todo find a way to register these handles so it doesn't need to be done from NetworkManager
             if (NetworkServer.active)
             {
                 NetworkServer.RegisterHandler<NetworkPositionSingleMessage>(ServerHandleNetworkPositionMessage);
             }
         }
 
-        public void UnregisterHandlers()
+        public void UnregisterClientHandlers()
         {
-            if (!handlersAreRegistered) { return; }
-            handlersAreRegistered = false;
-
             // todo find a way to unregister these handles so it doesn't need to be done from NetworkManager
             if (NetworkClient.active)
             {
                 NetworkClient.UnregisterHandler<NetworkPositionMessage>();
             }
-
+        }
+        public void UnregisterServerHandlers()
+        {
+            // todo find a way to unregister these handles so it doesn't need to be done from NetworkManager
             if (NetworkServer.active)
             {
                 NetworkServer.UnregisterHandler<NetworkPositionSingleMessage>();
@@ -79,8 +76,18 @@ namespace JamesFrowen.PositionSync
         {
             if (packer.checkEveryFrame || ShouldSync())
             {
-                SendUpdateToAll();
+                var time = packer.Time;
+                SendUpdateToAll(time);
+
+                // host mode
+                if (NetworkClient.active)
+                    packer.InterpolationTime.OnMessage(time);
             }
+        }
+        [ClientCallback]
+        private void Update()
+        {
+            packer.InterpolationTime.OnTick(packer.DeltaTime);
         }
 
         bool ShouldSync()
@@ -97,14 +104,14 @@ namespace JamesFrowen.PositionSync
             }
         }
 
-        internal void SendUpdateToAll()
+        internal void SendUpdateToAll(float time)
         {
             // dont send message if no behaviours
             if (packer.Behaviours.Count == 0) { return; }
 
             // todo dont create new buffer each time
             var bitWriter = new BitWriter(packer.Behaviours.Count * 32);
-            PackBehaviours(bitWriter, (float)NetworkTime.time);
+            PackBehaviours(bitWriter, time);
 
             // always send even if no behaviours so that time is sent
             var segment = bitWriter.ToArraySegment();
@@ -140,6 +147,10 @@ namespace JamesFrowen.PositionSync
 
         internal void ClientHandleNetworkPositionMessage(NetworkPositionMessage msg)
         {
+            // hostMode
+            if (NetworkServer.active)
+                return;
+
             int length = msg.payload.Count;
             // todo stop alloc
             using (var bitReader = new BitReader())
@@ -159,11 +170,7 @@ namespace JamesFrowen.PositionSync
 
                 }
 
-                // todo check we need this
-                foreach (SyncPositionBehaviour item in packer.Behaviours.Values)
-                {
-                    item.OnServerTime(time);
-                }
+                packer.InterpolationTime.OnMessage(time);
             }
         }
 
