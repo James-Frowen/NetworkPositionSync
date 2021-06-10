@@ -34,31 +34,31 @@ jobs:
           fetch-depth: 0
           path: Assets/PositionSync
    
-      - name: Add Coverage Plugin
-        uses: canastro/copy-action@0.0.2
-        with:
-          source: Packages/manifest-coverage.json
-          target: Packages/manifest.json
+      # - name: Add Coverage Plugin
+      #   uses: canastro/copy-action@0.0.2
+      #   with:
+      #     source: Packages/manifest-coverage.json
+      #     target: Packages/manifest.json
 
       - name: Activate license
-        uses: MirrorNG/unity-runner@2.0.0
+        uses: MirageNet/unity-runner@2.0.0
         with:
           entrypoint: /activate.sh
           
       - name: Generate Solution
-        uses: MirrorNG/unity-runner@2.0.0
+        uses: MirageNet/unity-runner@2.0.0
         with:
           # Arguments to pass to unity
           args: -buildTarget StandaloneWindows64 -customBuildName MirrorNG -customBuildPath ./build/StandaloneWindows64 -projectPath . -executeMethod  UnityEditor.SyncVS.SyncSolution -quit
 
       # Configure test runner
       - name: Run editor Tests
-        uses: MirrorNG/unity-runner@2.0.0
+        uses: MirageNet/unity-runner@2.0.0
         with:
           args: -runTests -testPlatform editmode -testResults Tests/editmode-results.xml -enableCodeCoverage -coverageResultsPath Tests -editorTestsCategories NetworkPositionSync
 
       - name: Run play Tests
-        uses: MirrorNG/unity-runner@2.0.0
+        uses: MirageNet/unity-runner@2.0.0
         with:
           args: -runTests -testPlatform playmode -testResults Tests/playmode-results.xml -enableCodeCoverage -coverageResultsPath Tests -editorTestsCategories NetworkPositionSync
           
@@ -79,7 +79,7 @@ jobs:
   
       - name: SonarQube analysis
         if: always()
-        uses: MirrorNG/unity-runner@2.0.0
+        uses: MirageNet/unity-runner@2.0.0
         with:
           entrypoint: /sonar-scanner.sh
           projectKey: James-Frowen_NetworkPositionSync
@@ -127,12 +127,10 @@ jobs:
           README.md ${{ env.TARGET_PATH }}/README.md
           modules/BitPacking/JamesFrowen.BitPacking/Source ${{ env.TARGET_PATH }}/modules/BitPacking
           modules/BitPacking/README.md ${{ env.TARGET_PATH }}/modules/BitPacking/README.md
-          modules/ScriptableVariables/source ${{ env.TARGET_PATH }}/modules/ScriptableVariables
-          modules/ScriptableVariables/README.md ${{ env.TARGET_PATH }}/modules/ScriptableVariables/README.md
+          modules/BitPacking/LICENSE ${{ env.TARGET_PATH }}/modules/BitPacking/LICENSE
+          modules/SimpleLogger/source ${{ env.TARGET_PATH }}/modules/SimpleLogger
+          modules/SimpleLogger/LICENSE ${{ env.TARGET_PATH }}/modules/SimpleLogger/LICENSE
           
-        # modules/BitPacking/LICENSE ${{ env.TARGET_PATH }}/modules/BitPacking/LICENSE
-        # modules/ScriptableVariables/LICENSE ${{ env.TARGET_PATH }}/modules/ScriptableVariables/LICENSE
-
       - uses: actions/upload-artifact@v1
         with:
           name: NetworkPositionSync.unitypackage
