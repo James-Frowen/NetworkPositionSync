@@ -33,12 +33,6 @@ jobs:
           source ${{ env.TARGET_PATH }}/scripts
           LICENSE ${{ env.TARGET_PATH }}/LICENSE 
           README.md ${{ env.TARGET_PATH }}/README.md
-          modules/BitPacking/JamesFrowen.BitPacking/Source ${{ env.TARGET_PATH }}/modules/BitPacking
-          modules/BitPacking/README.md ${{ env.TARGET_PATH }}/modules/BitPacking/README.md
-          modules/BitPacking/LICENSE ${{ env.TARGET_PATH }}/modules/BitPacking/LICENSE
-          modules/SimpleLogger/source ${{ env.TARGET_PATH }}/modules/SimpleLogger
-          modules/SimpleLogger/LICENSE ${{ env.TARGET_PATH }}/modules/SimpleLogger/LICENSE
-          examples/FollowPets ${{ env.TARGET_PATH }}/examples/FollowPets
           
       - uses: actions/upload-artifact@v1
         with:
