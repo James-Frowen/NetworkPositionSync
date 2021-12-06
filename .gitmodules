@@ -1,6 +1,0 @@
-[submodule "modules/BitPacking"]
-	path = modules/BitPacking
-	url = git@github.com:James-Frowen/BitPacking.git
-[submodule "modules/SimpleLogger"]
-	path = modules/SimpleLogger
-	url = git@github.com:James-Frowen/SimpleLogger.git
