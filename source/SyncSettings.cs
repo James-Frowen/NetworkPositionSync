@@ -94,7 +94,8 @@ namespace JamesFrowen.PositionSync
         // 0.1ms
         public float timePrecision = 1 / 10_000f;
 
-        [Header("Var size Compression, How many bits for a value before having to include another block. Best value will be a fraction of log2(worldSize / precision).\n" +
+        [Header("Var size Compression")]
+        [Tooltip("How many bits for a value before having to include another block.Best value will be a fraction of log2(worldSize / precision).\n" +
             "Default Value of 5 and 1/1000 precision will mean values under 54m will be 18 bits, values under 1747m will be 24 bits")]
         public int blockSize = 5;
 
