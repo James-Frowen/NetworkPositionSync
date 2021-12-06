@@ -94,7 +94,7 @@ namespace JamesFrowen.PositionSync
         /// </summary>
         readonly float _skipAheadThreshold;
 
-        readonly float _clientDelay;
+        float _clientDelay;
 
         // debug
         float _latestServerTime;
@@ -126,6 +126,7 @@ namespace JamesFrowen.PositionSync
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _clientDelay;
+            set => _clientDelay = value;
         }
 
         public float DebugScale => clientScaleTime;
