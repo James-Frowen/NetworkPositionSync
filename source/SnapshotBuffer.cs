@@ -186,6 +186,11 @@ namespace JamesFrowen.PositionSync
             }
         }
 
+        public void ClearBuffer()
+        {
+            buffer.Clear();
+        }
+
 
         public string ToDebugString(float now)
         {

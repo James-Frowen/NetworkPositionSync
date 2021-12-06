@@ -353,7 +353,12 @@ namespace JamesFrowen.PositionSync
             // host client doesn't need to update server
             if (IsServer) { return; }
 
-            syncTimer += Time.unscaledDeltaTime;
+            // client can just use delta not (instead of unscaled)
+            // this only job of this timer is to stop server being spammed with updates
+            // when an update like this gets to the server it will just be updated right away,
+            // the server can then send an update to the client on its next interval
+            // todo, does server need to buffer updates for this?
+            syncTimer += Time.deltaTime;
             if (syncTimer > ClientFixedSyncInterval)
             {
                 syncTimer -= ClientFixedSyncInterval;
@@ -411,6 +416,21 @@ namespace JamesFrowen.PositionSync
             // remove snapshots older than 2times sync interval, they will never be used by Interpolation
             float removeTime = snapshotTime - (_system.TimeSync.ClientDelay * 1.5f);
             snapshotBuffer.RemoveOldSnapshots(removeTime);
+        }
+        #endregion
+
+        #region Teleport
+        public void Teleport(Vector3 position, Quaternion rotation)
+        {
+            transform.SetPositionAndRotation(vector3, quaternion);
+            RpcTeleport(position, rotation);
+        }
+
+        [ClientRpc]
+        void RpcTeleport(Vector3 position, Quaternion rotation)
+        {
+            snapshotBuffer.ClearBuffer();
+            transform.SetPositionAndRotation(position, rotation);
         }
         #endregion
     }
