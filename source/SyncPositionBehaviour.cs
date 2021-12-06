@@ -101,7 +101,10 @@ namespace JamesFrowen.PositionSync
         [SerializeField] bool useLocalSpace = true;
 
         [Tooltip("Client Authority Sync Interval")]
-        [SerializeField] float clientSyncInterval = 0.1f;
+        [SerializeField] float clientSyncRate = 20;
+        [SerializeField] float ClientFixedSyncInterval => 1 / clientSyncRate;
+
+        float syncTimer;
 
         [SerializeField] bool showDebugGui = false;
 
@@ -120,16 +123,19 @@ namespace JamesFrowen.PositionSync
         Quaternion lastRotation;
 
         // client
-        readonly SnapshotBuffer<TransformState> snapshotBuffer = new SnapshotBuffer<TransformState>(TransformState.CreateInterpolator());
+        internal readonly SnapshotBuffer<TransformState> snapshotBuffer = new SnapshotBuffer<TransformState>(TransformState.CreateInterpolator());
 
 #if DEBUG
+        ExponentialMovingAverage timeDelayAvg = new ExponentialMovingAverage(100);
         void OnGUI()
         {
             if (showDebugGui)
             {
+                float delay = _system.TimeSync.LatestServerTime - _system.TimeSync.InterpolationTimeField;
+                timeDelayAvg.Add(delay);
                 GUILayout.Label($"ServerTime: {_system.TimeSync.LatestServerTime:0.000}");
                 GUILayout.Label($"InterpTime: {_system.TimeSync.InterpolationTimeField:0.000}");
-                GUILayout.Label($"Time Delta: {_system.TimeSync.LatestServerTime - _system.TimeSync.InterpolationTimeField:0.000} scale:{_system.TimeSync.DebugScale:0.000}");
+                GUILayout.Label($"Time Delta: {delay:0.000} smooth:{timeDelayAvg.Value:0.000} scale:{_system.TimeSync.DebugScale:0.000}");
                 GUILayout.Label(snapshotBuffer.ToDebugString(_system.TimeSync.InterpolationTimeField));
             }
         }
@@ -334,7 +340,7 @@ namespace JamesFrowen.PositionSync
             if (snapshotBuffer.IsEmpty)
             {
                 // use new state here instead of TranformState incase update is from client auth when runing in host mode
-                snapshotBuffer.AddSnapShot(new TransformState(Position, Rotation), serverTime - clientSyncInterval);
+                snapshotBuffer.AddSnapShot(new TransformState(Position, Rotation), serverTime - ClientFixedSyncInterval);
             }
             snapshotBuffer.AddSnapShot(state, serverTime);
         }
@@ -347,11 +353,16 @@ namespace JamesFrowen.PositionSync
             // host client doesn't need to update server
             if (IsServer) { return; }
 
-            if (HasMoved() || HasRotated())
+            syncTimer += Time.unscaledDeltaTime;
+            if (syncTimer > ClientFixedSyncInterval)
             {
-                SendMessageToServer();
-                // todo move client auth uppdate to sync system
-                ClearNeedsUpdate();
+                syncTimer -= ClientFixedSyncInterval;
+                if (HasMoved() || HasRotated())
+                {
+                    SendMessageToServer();
+                    // todo move client auth uppdate to sync system
+                    ClearNeedsUpdate();
+                }
             }
         }
 
@@ -360,7 +371,8 @@ namespace JamesFrowen.PositionSync
         {
             using (PooledNetworkWriter writer = NetworkWriterPool.GetWriter())
             {
-                _system.packer.PackTime(writer, (float)NetworkTime.Time);
+                // todo does client need to send time?
+                //_system.packer.PackTime(writer, (float)NetworkTime.Time);
                 _system.packer.PackNext(writer, this);
 
                 Client.Send(new NetworkPositionSingleMessage
