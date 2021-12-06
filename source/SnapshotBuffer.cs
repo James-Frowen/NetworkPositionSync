@@ -39,7 +39,7 @@ namespace JamesFrowen.PositionSync
     {
         static readonly ILogger logger = LogFactory.GetLogger<SnapshotBuffer<T>>();
 
-        struct Snapshot
+        internal struct Snapshot
         {
             /// <summary>
             /// Server Time
@@ -56,6 +56,8 @@ namespace JamesFrowen.PositionSync
 
         readonly List<Snapshot> buffer = new List<Snapshot>();
         readonly ISnapshotInterpolator<T> interpolator;
+
+        internal IReadOnlyList<Snapshot> DebugBuffer => buffer;
 
         public SnapshotBuffer(ISnapshotInterpolator<T> interpolator)
         {
