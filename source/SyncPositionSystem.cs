@@ -136,9 +136,12 @@ namespace JamesFrowen.PositionSync
         public SyncSettings PackSettings = new SyncSettings();
         [NonSerialized] public SyncPacker packer;
 
-        [Tooltip("How many updates per second")]
+        [Tooltip("How many updates per second, Should be less than frame rate")]
         public float SyncRate = 20;
         public float FixedSyncInterval => 1 / SyncRate;
+
+        Timer timer;
+        float syncTimer;
 
         [Header("Snapshot Interpolation")]
         [Tooltip("Number of ticks to delay interpolation to make sure there is always a snapshot to interpolate towards. High delay can handle more jitter, but adds latancy to the position.")]
@@ -146,7 +149,6 @@ namespace JamesFrowen.PositionSync
 
         [Tooltip("Skips Visibility and sends position to all ready connections")]
         public SyncMode syncMode = SyncMode.SendToAll;
-
 
         // cached object for update list
         HashSet<SyncPositionBehaviour> dirtySet = new HashSet<SyncPositionBehaviour>();
@@ -160,27 +162,9 @@ namespace JamesFrowen.PositionSync
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _timeSync;
         }
-        //public float Time
-        //{
-        //    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //    get => UnityEngine.Time.unscaledTime;
-        //}
-
-        //public float DeltaTime
-        //{
-        //    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //    get => UnityEngine.Time.unscaledDeltaTime;
-        //}
 
         public bool ClientActive => Client?.Active ?? false;
         public bool ServerActive => Server?.Active ?? false;
-
-
-        //private void OnDrawGizmos()
-        //{
-        //    if (packer != null)
-        //        packer.DrawGizmo();
-        //}
 
         internal void Awake()
         {
@@ -194,6 +178,8 @@ namespace JamesFrowen.PositionSync
         private void OnValidate()
         {
             packer = new SyncPacker(PackSettings ?? new SyncSettings());
+            if (_timeSync != null)
+                _timeSync.ClientDelay = TickDelayCount / SyncRate;
         }
         private void OnDestroy()
         {
@@ -203,30 +189,33 @@ namespace JamesFrowen.PositionSync
 
         private void ClientStarted()
         {
+            // not host
+            if (!ServerActive)
+                timer = new Timer();
+
             Client.MessageHandler.RegisterHandler<NetworkPositionMessage>(ClientHandleNetworkPositionMessage);
         }
 
         private void ServerStarted()
         {
+            timer = new Timer();
             Server.MessageHandler.RegisterHandler<NetworkPositionSingleMessage>(ServerHandleNetworkPositionMessage);
         }
 
 
         #region Sync Server -> Client
 
-        float serverTime;
-        float syncTimer;
-
         private void LateUpdate()
         {
-            serverTime += Time.unscaledDeltaTime;
-            syncTimer += Time.unscaledDeltaTime;
+            timer?.Update();
+
+            syncTimer += timer.Delta;
             // fixed atmost once a frame
             // but always SyncRate per second
             if (syncTimer > FixedSyncInterval)
             {
                 syncTimer -= FixedSyncInterval;
-                ServerUpdate(serverTime);
+                ServerUpdate(timer.Now);
             }
         }
         public void Update()
@@ -236,6 +225,8 @@ namespace JamesFrowen.PositionSync
 
         private void ServerUpdate(float time)
         {
+            if (!ServerActive) return;
+
             Benchmark.StartFrame();
             // syncs every frame, each Behaviour will track its own timer
             switch (syncMode)
@@ -259,12 +250,15 @@ namespace JamesFrowen.PositionSync
             Benchmark.EndFrame();
 
             // host mode
-            if (Client?.Active ?? false)
+            // todo do we need this?
+            if (ClientActive)
                 TimeSync.OnMessage(time);
         }
 
         private void ClientUpdate(float deltaTime)
         {
+            if (!ClientActive) return;
+
             TimeSync.OnUpdate(deltaTime);
         }
 
@@ -539,12 +533,13 @@ namespace JamesFrowen.PositionSync
         {
             using (PooledNetworkReader reader = NetworkReaderPool.GetReader(msg.payload))
             {
-                float time = packer.UnpackTime(reader);
+                //float time = packer.UnpackTime(reader);
                 packer.UnpackNext(reader, out uint id, out Vector3 pos, out Quaternion rot);
 
                 if (Behaviours.Dictionary.TryGetValue(id, out SyncPositionBehaviour behaviour))
                 {
-                    behaviour.ApplyOnServer(new TransformState(pos, rot), time);
+                    // todo fix host mode time
+                    behaviour.ApplyOnServer(new TransformState(pos, rot), timer.Now);
                 }
                 else
                 {
@@ -553,6 +548,38 @@ namespace JamesFrowen.PositionSync
             }
         }
         #endregion
+
+
+        public class Timer
+        {
+            readonly Stopwatch stopwatch = Stopwatch.StartNew();
+            float _previous;
+            float _delta;
+            float _now;
+
+            public float Delta
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => _delta;
+            }
+            public float Now
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => _now;
+            }
+
+            private float GetNow()
+            {
+                return (float)stopwatch.Elapsed.TotalMilliseconds;
+            }
+
+            public void Update()
+            {
+                _now = GetNow();
+                _delta = _now - _previous;
+                _previous = _now;
+            }
+        }
     }
 
     [NetworkMessage]
