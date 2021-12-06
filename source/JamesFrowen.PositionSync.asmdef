@@ -1,9 +1,7 @@
 {
     "name": "JamesFrowen.PositionSync",
     "references": [
-        "Mirror",
-        "JamesFrowen.BitPacking",
-        "JamesFrowen.SimpleLogger"
+        "Mirage"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
