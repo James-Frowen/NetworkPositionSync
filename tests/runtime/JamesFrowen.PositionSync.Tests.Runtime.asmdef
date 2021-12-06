@@ -1,12 +1,11 @@
 {
     "name": "JamesFrowen.PositionSync.Tests.Runtime",
     "references": [
-        "Mirror",
         "JamesFrowen.PositionSync",
-        "Mirror.Tests.Runtime"
-    ],
-    "optionalUnityReferences": [
-        "TestAssemblies"
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner",
+        "Mirage",
+        "Mirage.Tests.Runtime"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -15,8 +14,13 @@
     "precompiledReferences": [
         "NSubstitute.dll",
         "Castle.Core.dll",
-        "System.Threading.Tasks.Extensions.dll"
+        "System.Threading.Tasks.Extensions.dll",
+        "nunit.framework.dll"
     ],
-    "autoReferenced": true,
-    "defineConstraints": []
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
 }

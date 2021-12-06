@@ -1,50 +1,56 @@
-using Mirror;
-using Mirror.Tests.Runtime;
-using NUnit.Framework;
 using System.Collections;
-using System.Collections.Generic;
+using Mirage.Tests.Runtime.ClientServer;
+using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 
 namespace JamesFrowen.PositionSync.Tests.Runtime
 {
     [Category("NetworkPositionSync")]
-    public class NetworkTransformSnapshotInterpolationTest : HostSetup
+    public class NetworkTransformSnapshotInterpolationTest : ClientServerSetup<SyncPositionBehaviour>
     {
-        readonly List<GameObject> spawned = new List<GameObject>();
+        //protected override bool AutoAddPlayer => false;
 
-        private SyncPositionBehaviour serverNT;
-        private SyncPositionBehaviour clientNT;
+        //protected override void afterStartHost()
+        //{
+        //    var serverGO = new GameObject("server object");
+        //    var clientGO = new GameObject("client object");
+        //    spawned.Add(serverGO);
+        //    spawned.Add(clientGO);
 
-        protected override bool AutoAddPlayer => false;
+        //    var serverNI = serverGO.AddComponent<NetworkIdentity>();
+        //    var clientNI = clientGO.AddComponent<NetworkIdentity>();
 
-        protected override void afterStartHost()
+        //    serverNT = serverGO.AddComponent<SyncPositionBehaviour>();
+        //    clientNT = clientGO.AddComponent<SyncPositionBehaviour>();
+
+        //    // set up Identitys so that server object can send message to client object in host mode
+        //    FakeSpawnServerClientIdentity(serverNI, clientNI);
+
+        //    // reset both transforms
+        //    serverGO.transform.position = Vector3.zero;
+        //    clientGO.transform.position = Vector3.zero;
+        //}
+
+        //protected override void beforeStopHost()
+        //{
+        //    foreach (GameObject obj in spawned)
+        //    {
+        //        Object.Destroy(obj);
+        //    }
+        //}
+
+        public override void ExtraSetup()
         {
-            var serverGO = new GameObject("server object");
-            var clientGO = new GameObject("client object");
-            this.spawned.Add(serverGO);
-            this.spawned.Add(clientGO);
+            base.ExtraSetup();
+            SyncPositionSystem serverSystem = serverGo.AddComponent<SyncPositionSystem>();
+            SyncPositionSystem clientSystem = clientGo.AddComponent<SyncPositionSystem>();
 
-            var serverNI = serverGO.AddComponent<NetworkIdentity>();
-            var clientNI = clientGO.AddComponent<NetworkIdentity>();
+            serverSystem.Server = server;
+            serverSystem.Awake();
 
-            this.serverNT = serverGO.AddComponent<SyncPositionBehaviour>();
-            this.clientNT = clientGO.AddComponent<SyncPositionBehaviour>();
-
-            // set up Identitys so that server object can send message to client object in host mode
-            FakeSpawnServerClientIdentity(serverNI, clientNI);
-
-            // reset both transforms
-            serverGO.transform.position = Vector3.zero;
-            clientGO.transform.position = Vector3.zero;
-        }
-
-        protected override void beforeStopHost()
-        {
-            foreach (var obj in this.spawned)
-            {
-                Object.Destroy(obj);
-            }
+            clientSystem.Client = client;
+            clientSystem.Awake();
         }
 
         [UnityTest]
@@ -57,13 +63,13 @@ namespace JamesFrowen.PositionSync.Tests.Runtime
                 new Vector3(2, 3, 5),
             };
 
-            foreach (var position in positions)
+            foreach (Vector3 position in positions)
             {
-                this.serverNT.transform.position = position;
+                serverComponent.transform.position = position;
                 // wait more than needed to check end position is reached
                 yield return new WaitForSeconds(0.5f);
 
-                Assert.That(this.clientNT.transform.position, Is.EqualTo(position));
+                Assert.That(clientComponent.transform.position, Is.EqualTo(position));
             }
         }
     }
