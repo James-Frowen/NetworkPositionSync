@@ -1,20 +1,43 @@
+/*
+MIT License
+
+Copyright (c) 2021 James Frowen
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
 using System;
 using System.Runtime.CompilerServices;
-using JamesFrowen.Logging;
-using Mirror;
+using Mirage;
+using Mirage.Logging;
+using Mirage.Serialization;
 using UnityEngine;
-using BitWriter = JamesFrowen.BitPacking.NetworkWriter;
 
 namespace JamesFrowen.PositionSync
 {
     /// <summary>
     /// Behaviour to sync position and rotation, This behaviour is used by <see cref="SyncPositionSystem"/> in order to sync
-    /// <para>for standalone version see <see cref="SyncPositionBehaviourStandalone"/></para>
     /// </summary>
     [AddComponentMenu("Network/SyncPosition/SyncPositionBehaviour")]
     public class SyncPositionBehaviour : NetworkBehaviour
     {
-        #region ISyncPositionBehaviour
+        static readonly ILogger logger = LogFactory.GetLogger<SyncPositionBehaviour>();
 
         /// <summary>
         /// Checks if object needs syncing to clients
@@ -25,7 +48,7 @@ namespace JamesFrowen.PositionSync
         {
             if (IsControlledByServer)
             {
-                return IsTimeToUpdate() && (HasMoved() || HasRotated());
+                return HasMoved() || HasRotated();
             }
             else
             {
@@ -46,7 +69,7 @@ namespace JamesFrowen.PositionSync
             _latestState = state;
 
             // if host apply using interpolation otherwise apply exact 
-            if (isClient)
+            if (IsClient)
             {
                 AddSnapShotToBuffer(state, time);
             }
@@ -60,16 +83,12 @@ namespace JamesFrowen.PositionSync
         {
             // not host
             // host will have already handled movement in servers code
-            if (isServer)
+            if (IsServer)
                 return;
 
             AddSnapShotToBuffer(state, time);
         }
-        #endregion
 
-
-        [Header("References")]
-        [SerializeField] SyncPositionPacker packer;
 
         [Tooltip("Which transform to sync")]
         [SerializeField] Transform target;
@@ -80,14 +99,6 @@ namespace JamesFrowen.PositionSync
 
         [Tooltip("If true uses local position and rotation, if value uses world position and rotation")]
         [SerializeField] bool useLocalSpace = true;
-
-        // todo make 0 Sensitivity always send (and avoid doing distance/angle check)
-        [Tooltip("How far position has to move before it is synced")]
-        [SerializeField] float positionSensitivity = 0.1f;
-
-        [Tooltip("How far rotation has to move before it is synced")]
-        [SerializeField] float rotationSensitivity = 0.1f;
-
 
         [Tooltip("Client Authority Sync Interval")]
         [SerializeField] float clientSyncInterval = 0.1f;
@@ -104,25 +115,25 @@ namespace JamesFrowen.PositionSync
         /// </summary>
         TransformState? _latestState;
 
-        float _nextSyncInterval;
-
         // values for HasMoved/Rotated
         Vector3 lastPosition;
         Quaternion lastRotation;
 
         // client
-        readonly SnapshotBuffer snapshotBuffer = new SnapshotBuffer();
-       
+        readonly SnapshotBuffer<TransformState> snapshotBuffer = new SnapshotBuffer<TransformState>(TransformState.CreateInterpolator());
 
+#if DEBUG
         void OnGUI()
         {
             if (showDebugGui)
             {
-                GUILayout.Label($"ServerTime: {packer.InterpolationTime.ServerTime:0.000}");
-                GUILayout.Label($"LocalTime: {packer.InterpolationTime.ClientTime:0.000}");
-                GUILayout.Label(snapshotBuffer.ToString());
+                GUILayout.Label($"ServerTime: {_system.TimeSync.LatestServerTime:0.000}");
+                GUILayout.Label($"InterpTime: {_system.TimeSync.InterpolationTimeField:0.000}");
+                GUILayout.Label($"Time Delta: {_system.TimeSync.LatestServerTime - _system.TimeSync.InterpolationTimeField:0.000} scale:{_system.TimeSync.DebugScale:0.000}");
+                GUILayout.Label(snapshotBuffer.ToDebugString(_system.TimeSync.InterpolationTimeField));
             }
         }
+#endif
 
         void OnValidate()
         {
@@ -136,7 +147,7 @@ namespace JamesFrowen.PositionSync
         bool IsControlledByServer
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => !clientAuthority || connectionToClient == null || connectionToClient == NetworkServer.localConnection;
+            get => !clientAuthority || Owner == null || Owner == Server.LocalPlayer;
         }
 
         /// <summary>
@@ -145,7 +156,7 @@ namespace JamesFrowen.PositionSync
         bool IsLocalClientInControl
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => clientAuthority && hasAuthority;
+            get => clientAuthority && HasAuthority;
         }
 
         Vector3 Position
@@ -198,22 +209,14 @@ namespace JamesFrowen.PositionSync
             get => _latestState ?? new TransformState(Position, Rotation);
         }
 
-    
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        bool IsTimeToUpdate()
-        {
-            return packer.Time > _nextSyncInterval;
-        }
-
         /// <summary>
         /// Resets values, called after syncing to client
         /// <para>Called on server</para>
         /// </summary>
-        internal void ClearNeedsUpdate(float interval)
+        internal void ClearNeedsUpdate()
         {
             _needsUpdate = false;
             _latestState = null;
-            _nextSyncInterval = packer.Time + interval;
             lastPosition = Position;
             lastRotation = Rotation;
         }
@@ -225,7 +228,11 @@ namespace JamesFrowen.PositionSync
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         bool HasMoved()
         {
-            bool moved = Vector3.Distance(lastPosition, Position) > positionSensitivity;
+            Vector3 precision = _system.PackSettings.precision;
+            Vector3 diff = lastPosition - Position;
+            bool moved = Mathf.Abs(diff.x) > precision.x
+                    || Mathf.Abs(diff.y) > precision.y
+                    || Mathf.Abs(diff.z) > precision.z;
 
             if (moved)
             {
@@ -241,7 +248,8 @@ namespace JamesFrowen.PositionSync
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         bool HasRotated()
         {
-            bool rotated = Quaternion.Angle(lastRotation, Rotation) > rotationSensitivity;
+            // todo fix?
+            bool rotated = Quaternion.Angle(lastRotation, Rotation) > 0.001f;
 
             if (rotated)
             {
@@ -250,29 +258,51 @@ namespace JamesFrowen.PositionSync
             return rotated;
         }
 
+        private void Awake()
+        {
+            Identity.OnStartClient.AddListener(OnStartClient);
+            Identity.OnStopClient.AddListener(OnStopClient);
 
-        public override void OnStartClient()
-        {
-            if (!NetworkServer.active) // dont add twice in host mode
-                packer.AddBehaviour(this);
+            Identity.OnStartServer.AddListener(OnStartServer);
+            Identity.OnStopServer.AddListener(OnStopServer);
         }
-        public override void OnStartServer()
+        SyncPositionSystem _system;
+        void FindSystem()
         {
-            packer.AddBehaviour(this);
+            if (IsServer)
+                _system = ServerObjectManager.GetComponent<SyncPositionSystem>();
+            else if (IsClient)
+                _system = ClientObjectManager.GetComponent<SyncPositionSystem>();
+            else throw new InvalidOperationException("System can't be found when object is not spawned");
         }
-        public override void OnStopClient()
+        public void OnStartClient()
         {
-            if (!NetworkServer.active) // dont remove twice in host mode
-                packer.RemoveBehaviour(this);
+            // dont add twice in host mode
+            if (IsServer) return;
+            FindSystem();
+            _system.Behaviours.AddBehaviour(this);
         }
-        public override void OnStopServer()
+        public void OnStartServer()
         {
-            packer.RemoveBehaviour(this);
+            FindSystem();
+            _system.Behaviours.AddBehaviour(this);
+        }
+        public void OnStopClient()
+        {
+            // dont add twice in host mode
+            if (IsServer) return;
+            _system.Behaviours.RemoveBehaviour(this);
+            _system = null;
+        }
+        public void OnStopServer()
+        {
+            _system.Behaviours.RemoveBehaviour(this);
+            _system = null;
         }
 
         void Update()
         {
-            if (isClient)
+            if (IsClient)
             {
                 if (IsLocalClientInControl)
                 {
@@ -298,9 +328,6 @@ namespace JamesFrowen.PositionSync
             if (IsLocalClientInControl)
                 return;
 
-            // todo do we need this, or do we set it elsewhere?
-            //this.interpolationTime.OnMessage(serverTime);
-
             // buffer will be empty if first snapshot or hasn't moved for a while.
             // in this case we can add a snapshot for (serverTime-syncinterval) for interoplation
             // this assumes snapshots are sent in order!
@@ -318,30 +345,29 @@ namespace JamesFrowen.PositionSync
         void ClientAuthorityUpdate()
         {
             // host client doesn't need to update server
-            if (isServer) { return; }
+            if (IsServer) { return; }
 
-            if (IsTimeToUpdate() && (HasMoved() || HasRotated()))
+            if (HasMoved() || HasRotated())
             {
                 SendMessageToServer();
-                ClearNeedsUpdate(clientSyncInterval);
+                // todo move client auth uppdate to sync system
+                ClearNeedsUpdate();
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void SendMessageToServer()
         {
-            // todo dont create new buffer each time
-            var bitWriter = new BitWriter(64);
-            packer.PackTime(bitWriter, (float)NetworkTime.time);
-            packer.PackNext(bitWriter, this);
-
-            // todo optimize
-            byte[] temp = bitWriter.ToArray();
-
-            NetworkClient.Send(new NetworkPositionSingleMessage
+            using (PooledNetworkWriter writer = NetworkWriterPool.GetWriter())
             {
-                payload = new ArraySegment<byte>(temp)
-            });
+                _system.packer.PackTime(writer, (float)NetworkTime.Time);
+                _system.packer.PackNext(writer, this);
+
+                Client.Send(new NetworkPositionSingleMessage
+                {
+                    payload = writer.ToArraySegment()
+                });
+            }
         }
 
         /// <summary>
@@ -362,19 +388,16 @@ namespace JamesFrowen.PositionSync
         {
             if (snapshotBuffer.IsEmpty) { return; }
 
-
-            float snapshotTime = packer.InterpolationTime.ClientTime;
+            float snapshotTime = _system.TimeSync.InterpolationTimeField;
             TransformState state = snapshotBuffer.GetLinearInterpolation(snapshotTime);
-            SimpleLogger.Trace($"p1:{Position.x} p2:{state.position.x} delta:{Position.x - state.position.x}");
-
+            // todo add trace log
+            if (logger.LogEnabled()) logger.Log($"p1:{Position.x} p2:{state.position.x} delta:{Position.x - state.position.x}");
 
             Position = state.position;
-
-            if (packer.SyncRotation)
-                Rotation = state.rotation;
+            Rotation = state.rotation;
 
             // remove snapshots older than 2times sync interval, they will never be used by Interpolation
-            float removeTime = snapshotTime - (packer.ClientDelay * 1.5f);
+            float removeTime = snapshotTime - (_system.TimeSync.ClientDelay * 1.5f);
             snapshotBuffer.RemoveOldSnapshots(removeTime);
         }
         #endregion

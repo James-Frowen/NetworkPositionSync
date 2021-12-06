@@ -1,40 +1,53 @@
+/*
+MIT License
+
+Copyright (c) 2021 James Frowen
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text;
-using JamesFrowen.Logging;
+using Mirage.Logging;
 using UnityEngine;
 
 namespace JamesFrowen.PositionSync
 {
-    public struct TransformState
+    public interface ISnapshotInterpolator<T>
     {
-        public readonly Vector3 position;
-        public readonly Quaternion rotation;
-
-        public TransformState(Vector3 position, Quaternion rotation)
-        {
-            this.position = position;
-            this.rotation = rotation;
-        }
-
-        public override string ToString()
-        {
-            return $"[{position}, {rotation}]";
-        }
+        T Lerp(T a, T b, float alpha);
     }
-
-    public class SnapshotBuffer
+    public class SnapshotBuffer<T>
     {
+        static readonly ILogger logger = LogFactory.GetLogger<SnapshotBuffer<T>>();
+
         struct Snapshot
         {
             /// <summary>
             /// Server Time
             /// </summary>
             public readonly double time;
-            public readonly TransformState state;
+            public readonly T state;
 
-            public Snapshot(TransformState state, double time) : this()
+            public Snapshot(T state, double time) : this()
             {
                 this.state = state;
                 this.time = time;
@@ -42,6 +55,12 @@ namespace JamesFrowen.PositionSync
         }
 
         readonly List<Snapshot> buffer = new List<Snapshot>();
+        readonly ISnapshotInterpolator<T> interpolator;
+
+        public SnapshotBuffer(ISnapshotInterpolator<T> interpolator)
+        {
+            this.interpolator = interpolator;
+        }
 
         public bool IsEmpty
         {
@@ -65,7 +84,7 @@ namespace JamesFrowen.PositionSync
             get => buffer[buffer.Count - 1];
         }
 
-        public void AddSnapShot(TransformState state, double serverTime)
+        public void AddSnapShot(T state, double serverTime)
         {
             if (!IsEmpty && serverTime < Last.time)
             {
@@ -81,7 +100,7 @@ namespace JamesFrowen.PositionSync
         /// </summary>
         /// <param name="now"></param>
         /// <returns></returns>
-        public TransformState GetLinearInterpolation(double now)
+        public T GetLinearInterpolation(double now)
         {
             if (buffer.Count == 0)
             {
@@ -91,7 +110,7 @@ namespace JamesFrowen.PositionSync
             // first snapshot
             if (buffer.Count == 1)
             {
-                SimpleLogger.Debug("First snapshot");
+                if (logger.LogEnabled()) logger.Log("First snapshot");
 
                 return First.state;
             }
@@ -99,7 +118,7 @@ namespace JamesFrowen.PositionSync
             // if first snapshot is after now, there is no "from", so return same as first snapshot
             if (First.time > now)
             {
-                SimpleLogger.Debug($"No snapshots for t={now:0.000}, using earliest t={buffer[0].time:0.000}");
+                if (logger.LogEnabled()) logger.Log($"No snapshots for t={now:0.000}, using earliest t={buffer[0].time:0.000}");
 
                 return First.state;
             }
@@ -109,7 +128,7 @@ namespace JamesFrowen.PositionSync
             // there could be no new data from either lag or because object hasn't moved
             if (Last.time < now)
             {
-                SimpleLogger.DebugWarn($"No snapshots for t={now:0.000}, using first t={buffer[0].time:0.000} last t={Last.time:0.000}");
+                if (logger.LogEnabled()) logger.Log($"No snapshots for t={now:0.000}, using first t={buffer[0].time:0.000} last t={Last.time:0.000}");
                 return Last.state;
             }
 
@@ -125,14 +144,14 @@ namespace JamesFrowen.PositionSync
                 if (fromTime <= now && now <= toTime)
                 {
                     float alpha = (float)Clamp01((now - fromTime) / (toTime - fromTime));
-                    SimpleLogger.Trace($"alpha:{alpha:0.000}");
-                    Vector3 pos = Vector3.Lerp(from.state.position, to.state.position, alpha);
-                    Quaternion rot = Quaternion.Slerp(from.state.rotation, to.state.rotation, alpha);
-                    return new TransformState(pos, rot);
+                    // todo add trace log
+                    if (logger.LogEnabled()) logger.Log($"alpha:{alpha:0.000}");
+
+                    return interpolator.Lerp(from.state, to.state, alpha);
                 }
             }
 
-            SimpleLogger.Error("Should never be here! Code should have return from if or for loop above.");
+            logger.LogError("Should never be here! Code should have return from if or for loop above.");
             return Last.state;
         }
 
@@ -165,14 +184,27 @@ namespace JamesFrowen.PositionSync
             }
         }
 
-        public override string ToString()
+
+        public string ToDebugString(float now)
         {
             if (buffer.Count == 0) { return "Buffer Empty"; }
 
-            StringBuilder builder = new StringBuilder();
+            var builder = new StringBuilder();
             builder.AppendLine($"count:{buffer.Count}, minTime:{buffer[0].time:0.000}, maxTime:{buffer[buffer.Count - 1].time:0.000}");
             for (int i = 0; i < buffer.Count; i++)
             {
+                if (i != 0)
+                {
+                    double fromTime = buffer[i - 1].time;
+                    double toTime = buffer[i].time;
+                    // if between times, then use from/to
+                    if (fromTime <= now && now <= toTime)
+                    {
+                        builder.AppendLine($"                    <-----");
+                    }
+                }
+
+
                 builder.AppendLine($"  {i}: {buffer[i].time:0.000}");
             }
             return builder.ToString();
