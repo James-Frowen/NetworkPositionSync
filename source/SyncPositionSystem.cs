@@ -193,8 +193,6 @@ namespace JamesFrowen.PositionSync
 
         private void LateUpdate()
         {
-            timer?.Update();
-
             syncTimer += timer.Delta;
             // fixed atmost once a frame
             // but always SyncRate per second
@@ -206,7 +204,8 @@ namespace JamesFrowen.PositionSync
         }
         public void Update()
         {
-            ClientUpdate(Time.unscaledDeltaTime);
+            timer?.Update();
+            ClientUpdate(timer.Delta);
         }
 
         private void ServerUpdate(float time)
@@ -556,7 +555,7 @@ namespace JamesFrowen.PositionSync
 
             private float GetNow()
             {
-                return (float)stopwatch.Elapsed.TotalMilliseconds;
+                return (float)(stopwatch.Elapsed.TotalMilliseconds / 1000f);
             }
 
             public void Update()
