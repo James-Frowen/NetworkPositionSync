@@ -28,64 +28,6 @@ using UnityEngine;
 
 namespace JamesFrowen.PositionSync
 {
-
-    public sealed class VarFloatPacker
-    {
-        readonly int blockSize;
-        readonly float precision;
-        readonly float inversePrecision;
-
-        public VarFloatPacker(float precision, int blockSize)
-        {
-            this.precision = precision;
-            this.blockSize = blockSize;
-            inversePrecision = 1 / precision;
-        }
-
-        public void Pack(NetworkWriter writer, float value)
-        {
-            int scaled = Mathf.RoundToInt(value * inversePrecision);
-            uint zig = ZigZag.Encode(scaled);
-            VarIntBlocksPacker.Pack(writer, zig, blockSize);
-        }
-
-        public float Unpack(NetworkReader reader)
-        {
-            uint zig = (uint)VarIntBlocksPacker.Unpack(reader, blockSize);
-            int scaled = ZigZag.Decode(zig);
-            return scaled * precision;
-        }
-    }
-    public sealed class VarVector3Packer
-    {
-        readonly VarFloatPacker x;
-        readonly VarFloatPacker y;
-        readonly VarFloatPacker z;
-
-        public VarVector3Packer(Vector3 precision, int blocksize)
-        {
-            x = new VarFloatPacker(precision.x, blocksize);
-            y = new VarFloatPacker(precision.y, blocksize);
-            z = new VarFloatPacker(precision.z, blocksize);
-        }
-
-        public void Pack(NetworkWriter writer, Vector3 position)
-        {
-            x.Pack(writer, position.x);
-            y.Pack(writer, position.y);
-            z.Pack(writer, position.z);
-        }
-
-        public Vector3 Unpack(NetworkReader reader)
-        {
-            Vector3 value = default;
-            value.x = x.Unpack(reader);
-            value.y = y.Unpack(reader);
-            value.z = z.Unpack(reader);
-            return value;
-        }
-    }
-
     [Serializable]
     public class SyncSettings
     {
