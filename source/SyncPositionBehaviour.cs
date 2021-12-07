@@ -422,7 +422,7 @@ namespace JamesFrowen.PositionSync
         #region Teleport
         public void Teleport(Vector3 position, Quaternion rotation)
         {
-            transform.SetPositionAndRotation(vector3, quaternion);
+            transform.SetPositionAndRotation(position, rotation);
             RpcTeleport(position, rotation);
         }
 
