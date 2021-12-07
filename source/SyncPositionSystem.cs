@@ -84,20 +84,6 @@ namespace JamesFrowen.PositionSync
         {
             uint netId = thing.NetId;
             _behaviours.Add(netId, thing);
-
-
-            if (_behaviours.TryGetValue(netId, out SyncPositionBehaviour existingValue))
-            {
-                if (existingValue != thing)
-                {
-                    // todo what is this log?
-                    logger.LogError("Parent can't be set without control");
-                }
-            }
-            else
-            {
-                _behaviours.Add(netId, thing);
-            }
         }
 
         public void RemoveBehaviour(SyncPositionBehaviour thing)
