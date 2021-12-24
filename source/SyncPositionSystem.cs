@@ -193,6 +193,9 @@ namespace JamesFrowen.PositionSync
 
         private void LateUpdate()
         {
+            if (timer == null) 
+                return;
+
             syncTimer += timer.Delta;
             // fixed atmost once a frame
             // but always SyncRate per second
@@ -204,7 +207,10 @@ namespace JamesFrowen.PositionSync
         }
         public void Update()
         {
-            timer?.Update();
+            if (timer == null) 
+                return;
+
+            timer.Update();
             ClientUpdate(timer.Delta);
         }
 
