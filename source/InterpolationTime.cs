@@ -210,7 +210,7 @@ namespace JamesFrowen.PositionSync
         }
 
         /// <summary>
-        /// A
+        /// Adjusts the client time scale based on the provided difference.
         /// </summary>
         private void AdjustClientTimeScale(float diff)
         {
