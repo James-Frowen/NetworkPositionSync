@@ -89,30 +89,27 @@ namespace JamesFrowen.PositionSync
         public void AddSnapShot(T state, double serverTime)
         {
             if (!IsEmpty && serverTime < Last.time)
-            {
-                throw new ArgumentException($"Can not add Snapshot to buffer out of order, last t={Last.time:0.000}, new t={serverTime:0.000}");
-            }
+				throw new ArgumentException($"Can not add snapshot to buffer. This would cause the buffer to be out of order. Last t={Last.time:0.000}, new t={serverTime:0.000}");
 
             buffer.Add(new Snapshot(state, serverTime));
         }
 
         /// <summary>
-        /// Gets snapshot to use for interpolation
-        /// <para>this method should not be called when there are no snapshots in buffer</para>
+        /// Gets a snapshot to use for interpolation purposes.
+        /// <para>This method should not be called when there are no snapshots in the buffer.</para>
         /// </summary>
         /// <param name="now"></param>
         /// <returns></returns>
         public T GetLinearInterpolation(double now)
         {
             if (buffer.Count == 0)
-            {
-                throw new InvalidOperationException("No snapshots in buffer");
-            }
+				throw new InvalidOperationException("No snapshots in buffer.");
 
             // first snapshot
             if (buffer.Count == 1)
             {
-                if (logger.LogEnabled()) logger.Log("First snapshot");
+                if (logger.LogEnabled()) 
+					logger.Log("First snapshot");
 
                 return First.state;
             }
@@ -120,7 +117,8 @@ namespace JamesFrowen.PositionSync
             // if first snapshot is after now, there is no "from", so return same as first snapshot
             if (First.time > now)
             {
-                if (logger.LogEnabled()) logger.Log($"No snapshots for t={now:0.000}, using earliest t={buffer[0].time:0.000}");
+                if (logger.LogEnabled()) 
+					logger.Log($"No snapshots for t = {now:0.000}, using earliest t = {buffer[0].time:0.000}");
 
                 return First.state;
             }
@@ -130,11 +128,12 @@ namespace JamesFrowen.PositionSync
             // there could be no new data from either lag or because object hasn't moved
             if (Last.time < now)
             {
-                if (logger.LogEnabled()) logger.Log($"No snapshots for t={now:0.000}, using first t={buffer[0].time:0.000} last t={Last.time:0.000}");
+                if (logger.LogEnabled()) 
+					logger.Log($"No snapshots for t = {now:0.000}, using first t = {buffer[0].time:0.000},  last t = {Last.time:0.000}");
                 return Last.state;
             }
 
-            // edge cases are returned about, if code gets to this for loop then a valid from/to should exist
+            // edge cases are returned about, if code gets to this for loop then a valid from/to should exist...
             for (int i = 0; i < buffer.Count - 1; i++)
             {
                 Snapshot from = buffer[i];
@@ -153,6 +152,7 @@ namespace JamesFrowen.PositionSync
                 }
             }
 
+			// If not, then this is our final stand.
             logger.LogError("Should never be here! Code should have return from if or for loop above.");
             return Last.state;
         }
@@ -160,25 +160,21 @@ namespace JamesFrowen.PositionSync
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private double Clamp01(double v)
         {
-            if (v < 0) { return 0; }
-            if (v > 1) { return 1; }
-            else { return v; }
+            if (v < 0) return 0;
+            if (v > 1) return 1;
+            else return v;
         }
 
         /// <summary>
-        /// removes snapshots older than <paramref name="oldTime"/>, but keeps atleast <paramref name="keepCount"/> snapshots in buffer that are older than oldTime
-        /// <para>
-        /// Keep atleast 1 snapshot older than old time so there is something to interoplate from
-        /// </para>
+        /// Removes snapshots older than <paramref name="oldTime"/>.
         /// </summary>
         /// <param name="oldTime"></param>
-        /// <param name="keepCount">minium number of snapshots to keep in buffer</param>
         public void RemoveOldSnapshots(float oldTime)
         {
-            // loop from newest to oldest
+            // Loop from newest to oldest...
             for (int i = buffer.Count - 1; i >= 0; i--)
             {
-                // older than oldTime
+                // Is this one older than oldTime? If so, evict it.
                 if (buffer[i].time < oldTime)
                 {
                     buffer.RemoveAt(i);
@@ -186,12 +182,15 @@ namespace JamesFrowen.PositionSync
             }
         }
 
+        /// <summary>
+        /// Clears the snapshots buffer.
+        /// </summary>
         public void ClearBuffer()
         {
             buffer.Clear();
         }
 
-
+		// Used for debug purposes. Move along...
         public string ToDebugString(float now)
         {
             if (buffer.Count == 0) { return "Buffer Empty"; }
@@ -210,7 +209,6 @@ namespace JamesFrowen.PositionSync
                         builder.AppendLine($"                    <-----");
                     }
                 }
-
 
                 builder.AppendLine($"  {i}: {buffer[i].time:0.000}");
             }
