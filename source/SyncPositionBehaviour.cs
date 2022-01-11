@@ -48,15 +48,11 @@ namespace JamesFrowen.PositionSync
         internal bool NeedsUpdate()
         {
             if (IsControlledByServer)
-            {
                 return HasMoved() || HasRotated();
-            }
             else
-            {
-				// If client authority, we don't care able the time the snapshot was sent, just parrot it to other clients.
+                // If client authority, we don't care about the time the snapshot was sent, just parrot it to other clients.
                 // todo do we need a check for attackers sending too many snapshots?
                 return _needsUpdate;
-            }
         }
 
         /// <summary>
@@ -65,43 +61,42 @@ namespace JamesFrowen.PositionSync
         /// </summary>
         internal void ApplyOnServer(TransformState state, float time)
         {
-            // this should not happen throw an Exception to disconnect the attacker
-            if (!clientAuthority) 
-				throw new InvalidOperationException("Client is not allowed to send updated when clientAuthority is false");
+            // This should not happen. throw an Exception to disconnect the attacker
+            if (!clientAuthority)
+                throw new InvalidOperationException("Client is not allowed to send updated data when clientAuthority is false");
 
-            // see comment in NeedsUpdate 
+            // See comment in NeedsUpdate 
             _needsUpdate = true;
             _latestState = state;
 
-            // if host apply using interpolation otherwise apply exact 
+            // If host then apply using interpolation, otherwise apply exact 
             if (IsClient)
-				AddSnapShotToBuffer(state, time);
+                AddSnapShotToBuffer(state, time);
             else
                 ApplyStateNoInterpolation(state);
         }
-		
+
         /// <summary>
         /// Applies a state update on the client instance.
         /// <para>Called on client.</para>
         /// </summary>
         internal void ApplyOnClient(TransformState state, float time)
         {
-            // not host
-            // host will have already handled movement in servers code
+            // Not host.
+            // Host will have already handled movement in servers code
             if (IsServer)
                 return;
 
             AddSnapShotToBuffer(state, time);
         }
 
-		[Header("Synchronization Settings")]
-		
+        [Header("Synchronization Settings")]
+
         [Tooltip("What transform should be synchronized?")]
         [SerializeField] Transform target;
 
         [Tooltip("If true, we will use local position and rotation. If false, we use world position and rotation.")]
         [SerializeField] bool useLocalSpace = true;
-
 
         [Header("Authority")]
         [Tooltip("Set to true if moves come from owner client, set to false if moves always come from server")]
@@ -111,9 +106,9 @@ namespace JamesFrowen.PositionSync
         [SerializeField] float clientSyncRate = 20;
         [SerializeField] float ClientFixedSyncInterval => 1 / clientSyncRate;
 
-		[Tooltip("Debugging")]
+        [Tooltip("Debugging")]
         [SerializeField] bool showDebugGui = false;
-			
+
         float syncTimer;
 
         /// <summary>
@@ -151,7 +146,7 @@ namespace JamesFrowen.PositionSync
 
         void OnValidate()
         {
-            if (target == null)				
+            if (target == null)
                 target = transform;
         }
 
@@ -184,7 +179,7 @@ namespace JamesFrowen.PositionSync
             set
             {
                 if (useLocalSpace)
-					target.localPosition = value;
+                    target.localPosition = value;
                 else
                     target.position = value;
             }
@@ -201,7 +196,7 @@ namespace JamesFrowen.PositionSync
             set
             {
                 if (useLocalSpace)
-					target.localRotation = value;
+                    target.localRotation = value;
                 else
                     target.rotation = value;
             }
@@ -266,17 +261,17 @@ namespace JamesFrowen.PositionSync
 
         private void Awake()
         {
-			// Hook into Mirage's Event System.			
+            // Hook into Mirage's Event System.			
             Identity.OnStartClient.AddListener(OnStartClient);
             Identity.OnStopClient.AddListener(OnStopClient);
 
             Identity.OnStartServer.AddListener(OnStartServer);
             Identity.OnStopServer.AddListener(OnStopServer);
         }
-		
+
         SyncPositionSystem _system;
-		
-        void FindSystem()		
+
+        void FindSystem()
         {
             if (IsServer)
                 _system = ServerObjectManager.GetComponent<SyncPositionSystem>();
@@ -284,9 +279,9 @@ namespace JamesFrowen.PositionSync
                 _system = ClientObjectManager.GetComponent<SyncPositionSystem>();
             else throw new InvalidOperationException("System can't be found when object is not spawned");
         }
-		
-		
-#region Mirage Event Callbacks		
+
+
+        #region Mirage Event Callbacks		
         public void OnStartClient()
         {
             // dont add twice in host mode
@@ -294,13 +289,13 @@ namespace JamesFrowen.PositionSync
             FindSystem();
             _system.Behaviours.AddBehaviour(this);
         }
-		
+
         public void OnStartServer()
         {
             FindSystem();
             _system.Behaviours.AddBehaviour(this);
         }
-		
+
         public void OnStopClient()
         {
             // dont add twice in host mode
@@ -308,20 +303,20 @@ namespace JamesFrowen.PositionSync
             _system.Behaviours.RemoveBehaviour(this);
             _system = null;
         }
-		
+
         public void OnStopServer()
         {
             _system.Behaviours.RemoveBehaviour(this);
             _system = null;
         }
-#endregion
+        #endregion
 
         void Update()
         {
             if (IsClient)
             {
                 if (IsLocalClientInControl)
-					ClientAuthorityUpdate();
+                    ClientAuthorityUpdate();
                 else
                     ClientInterpolation();
             }
@@ -409,14 +404,14 @@ namespace JamesFrowen.PositionSync
         #region Client Interpolation
         void ClientInterpolation()
         {
-            if (snapshotBuffer.IsEmpty) 
-				return;
+            if (snapshotBuffer.IsEmpty)
+                return;
 
             float snapshotTime = _system.TimeSync.InterpolationTimeField;
             TransformState state = snapshotBuffer.GetLinearInterpolation(snapshotTime);
             // todo add trace log
             if (logger.LogEnabled())
-				logger.Log($"p1: {Position.x}, p2: {state.position.x}, delta: {Position.x - state.position.x}");
+                logger.Log($"p1: {Position.x}, p2: {state.position.x}, delta: {Position.x - state.position.x}");
 
             Position = state.position;
             Rotation = state.rotation;

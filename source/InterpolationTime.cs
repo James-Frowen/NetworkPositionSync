@@ -222,7 +222,7 @@ namespace JamesFrowen.PositionSync
             // Server's ahead of us, we need to speed up.
             if (diff > positiveThreshold)
                 clientScaleTime = fastScale;			
-            // Server is faling behind us, we need to slow down.
+            // Server is falling behind us, we need to slow down.
             else if (diff < negativeThreshold)
                 clientScaleTime = slowScale;
             // Server and client are on par ("close enough"). Run at normal speed.

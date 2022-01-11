@@ -122,7 +122,8 @@ namespace JamesFrowen.PositionSync
         public SyncSettings PackSettings = new SyncSettings();
         [NonSerialized] public SyncPacker packer;
 
-        [Tooltip("How many updates per second, Should be less than frame rate")]
+        [Header("Synchronization Settings")]
+        [Tooltip("How many updates to perform per second. For best performance, set to a value below your maximum frame rate.")]
         public float SyncRate = 20;
         public float FixedSyncInterval => 1 / SyncRate;
 
@@ -133,7 +134,7 @@ namespace JamesFrowen.PositionSync
         [Tooltip("Number of ticks to delay interpolation to make sure there is always a snapshot to interpolate towards. High delay can handle more jitter, but adds latancy to the position.")]
         public float TickDelayCount = 2;
 
-        [Tooltip("Skips Visibility and sends position to all ready connections")]
+        [Tooltip("SendToAll option skips visibility and sends position to all ready connections.")]
         public SyncMode syncMode = SyncMode.SendToAll;
 
         // cached object for update list
@@ -190,10 +191,9 @@ namespace JamesFrowen.PositionSync
 
 
         #region Sync Server -> Client
-
         private void LateUpdate()
         {
-            if (timer == null) 
+            if (timer == null)
                 return;
 
             syncTimer += timer.Delta;
@@ -205,9 +205,10 @@ namespace JamesFrowen.PositionSync
                 ServerUpdate(timer.Now);
             }
         }
+
         public void Update()
         {
-            if (timer == null) 
+            if (timer == null)
                 return;
 
             timer.Update();
@@ -256,17 +257,19 @@ namespace JamesFrowen.PositionSync
         internal void SendUpdateToAll(float time)
         {
             // dont send message if no behaviours
-            if (Behaviours.Dictionary.Count == 0) { return; }
+            if (Behaviours.Dictionary.Count == 0)
+                return;
 
             UpdateDirtySet();
             using (PooledNetworkWriter writer = NetworkWriterPool.GetWriter())
             {
                 packer.PackTime(writer, time);
 
-
                 foreach (SyncPositionBehaviour behaviour in dirtySet)
                 {
-                    if (logger.LogEnabled()) logger.Log($"Time {time:0.000}, Packing {behaviour.name}");
+                    if (logger.LogEnabled())
+                        logger.Log($"Time {time:0.000}, Packing {behaviour.name}");
+
                     packer.PackNext(writer, behaviour);
 
                     // todo handle client authority updates better
@@ -280,15 +283,15 @@ namespace JamesFrowen.PositionSync
             }
         }
 
-
         /// <summary>
-        /// Loops through all players, then through all dirty object and checks if palyer can see each
+        /// Loops through all players, followed by all dirty objects and checks if the player object can see each one
         /// </summary>
         /// <param name="time"></param>
         internal void SendUpdateToObservers_PlayerDirty(float time)
         {
             // dont send message if no behaviours
-            if (Behaviours.Dictionary.Count == 0) { return; }
+            if (Behaviours.Dictionary.Count == 0)
+                return;
 
             UpdateDirtySet();
 
@@ -318,13 +321,15 @@ namespace JamesFrowen.PositionSync
         }
 
         /// <summary>
-        /// Loops through all players, then through all dirty object and checks if palyer can see each
+        /// Loops through all players, followed by all dirty objects and checks if the player object can see each one
+        /// ...except this one packs data once.
         /// </summary>
         /// <param name="time"></param>
         internal void SendUpdateToObservers_PlayerDirty_PackOnce(float time)
         {
             // dont send message if no behaviours
-            if (Behaviours.Dictionary.Count == 0) { return; }
+            if (Behaviours.Dictionary.Count == 0)
+                return;
 
             UpdateDirtySet();
             NetworkWriterPool.Configure(100, 200);
@@ -353,9 +358,8 @@ namespace JamesFrowen.PositionSync
             }
 
             foreach (PooledNetworkWriter writer in writerPool_Behaviours.Values)
-            {
                 writer.Release();
-            }
+
             writerPool_Behaviours.Clear();
 
             ClearDirtySet();
@@ -381,7 +385,8 @@ namespace JamesFrowen.PositionSync
         internal void SendUpdateToObservers_DirtyObservers(float time)
         {
             // dont send message if no behaviours
-            if (Behaviours.Dictionary.Count == 0) { return; }
+            if (Behaviours.Dictionary.Count == 0)
+                return;
 
             UpdateDirtySet();
 
@@ -407,7 +412,6 @@ namespace JamesFrowen.PositionSync
             ClearDirtySet();
         }
 
-
         /// <summary>
         /// Loops through all dirty objects, and then their observers and then writes that behaviouir to a cahced writer
         /// <para>But Packs once and copies bytes</para>
@@ -416,18 +420,19 @@ namespace JamesFrowen.PositionSync
         internal void SendUpdateToObservers_DirtyObservers_PackOnce(float time)
         {
             // dont send message if no behaviours
-            if (Behaviours.Dictionary.Count == 0) { return; }
+            if (Behaviours.Dictionary.Count == 0)
+                return;
 
             UpdateDirtySet();
             using (PooledNetworkWriter packWriter = NetworkWriterPool.GetWriter())
             {
                 foreach (SyncPositionBehaviour behaviour in dirtySet)
                 {
-                    if (behaviour.Identity.observers.Count == 0) { continue; }
+                    if (behaviour.Identity.observers.Count == 0)
+                        continue;
 
                     packWriter.Reset();
                     packer.PackNext(packWriter, behaviour);
-
 
                     foreach (INetworkPlayer observer in behaviour.Identity.observers)
                     {
@@ -446,7 +451,6 @@ namespace JamesFrowen.PositionSync
                 writer.Release();
             }
             writerPool.Clear();
-
 
             ClearDirtySet();
         }
@@ -479,13 +483,10 @@ namespace JamesFrowen.PositionSync
         private void ClearDirtySet()
         {
             foreach (SyncPositionBehaviour behaviour in dirtySet)
-            {
                 behaviour.ClearNeedsUpdate();
-            }
+
             dirtySet.Clear();
         }
-
-
 
         internal void ClientHandleNetworkPositionMessage(NetworkPositionMessage msg)
         {
@@ -500,20 +501,15 @@ namespace JamesFrowen.PositionSync
                 while (packer.TryUnpackNext(reader, out uint id, out Vector3 pos, out Quaternion rot))
                 {
                     if (Behaviours.Dictionary.TryGetValue(id, out SyncPositionBehaviour behaviour))
-                    {
                         behaviour.ApplyOnClient(new TransformState(pos, rot), time);
-                    }
                 }
 
                 TimeSync.OnMessage(time);
             }
         }
-
         #endregion
 
-
         #region Sync Client Auth -> Server
-
 
         /// <summary>
         /// Position from client to server
@@ -528,14 +524,11 @@ namespace JamesFrowen.PositionSync
                 packer.UnpackNext(reader, out uint id, out Vector3 pos, out Quaternion rot);
 
                 if (Behaviours.Dictionary.TryGetValue(id, out SyncPositionBehaviour behaviour))
-                {
                     // todo fix host mode time
                     behaviour.ApplyOnServer(new TransformState(pos, rot), timer.Now);
-                }
                 else
-                {
-                    if (logger.WarnEnabled()) logger.LogWarning($"Could not find behaviour with id {id}");
-                }
+                    if (logger.WarnEnabled())
+                        logger.LogWarning($"Could not find a NetworkBehaviour with id {id}");
             }
         }
         #endregion

@@ -48,14 +48,14 @@ namespace JamesFrowen.PositionSync
                 _system = ClientObjectManager.GetComponent<SyncPositionSystem>();
 
             foreach (GameObject marker in markers)
-            {
                 marker.SetActive(false);
-            }
+
             IReadOnlyList<SnapshotBuffer<TransformState>.Snapshot> buffer = behaviour.snapshotBuffer.DebugBuffer;
             for (int i = 0; i < buffer.Count; i++)
             {
                 SnapshotBuffer<TransformState>.Snapshot snapshot = buffer[i];
-                if (markers.Count <= i) markers.Add(CreateMarker());
+                if (markers.Count <= i) 
+                    markers.Add(CreateMarker());
 
                 markers[i].SetActive(true);
                 markers[i].transform.SetPositionAndRotation(snapshot.state.position, snapshot.state.rotation);
