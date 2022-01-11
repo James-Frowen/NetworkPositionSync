@@ -30,8 +30,6 @@ namespace JamesFrowen.PositionSync
     {
         uint head;
         WorldState[] ring;
-
-
     }
 
     public class WorldState
