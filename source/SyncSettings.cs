@@ -31,14 +31,14 @@ namespace JamesFrowen.PositionSync
     [Serializable]
     public class SyncSettings
     {
-        [Header("timer Compression")]
-        //public float maxTime = 60 * 60 * 24;
+        [Header("Timer Compression")]
+        // public float maxTime = 60 * 60 * 24;
         // 0.1ms
         public float timePrecision = 1 / 10_000f;
 
-        [Header("Var size Compression")]
-        [Tooltip("How many bits for a value before having to include another block.Best value will be a fraction of log2(worldSize / precision).\n" +
-            "Default Value of 5 and 1/1000 precision will mean values under 54m will be 18 bits, values under 1747m will be 24 bits")]
+        [Header("Var Size Compression")]
+        [Tooltip("How many bits will be used for a value before having to include another block.\nBest value will be a fraction of log2(worldSize / precision).\n" +
+            "The default values of 5 Block Size and 1/1000 precision will mean values under 54m will be 18 bits, values under 1747m will be 24 bits")]
         public int blockSize = 5;
 
         [Header("Position Compression")]
@@ -49,7 +49,7 @@ namespace JamesFrowen.PositionSync
         //public bool syncRotation = true;
         public int bitCount = 10;
 
-
+        // Data Packers.
         public VarFloatPacker CreateTimePacker()
         {
             return new VarFloatPacker(timePrecision, blockSize);
@@ -127,6 +127,7 @@ namespace JamesFrowen.PositionSync
             }
         }
     }
+
     //[Serializable]
     //public class SyncSettingsDebug
     //{
