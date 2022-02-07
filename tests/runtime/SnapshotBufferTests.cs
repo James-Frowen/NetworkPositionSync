@@ -1,4 +1,5 @@
 using System;
+using Mirage.Logging;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -86,7 +87,7 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
             buffer.AddSnapShot(default, time1);
 
             ArgumentException exception = Assert.Throws<ArgumentException>(() => buffer.AddSnapShot(default, time2));
-            Assert.That(exception, Has.Message.EqualTo($"Can not add Snapshot to buffer out of order, last t={time1:0.000}, new t={time2:0.000}"));
+            Assert.That(exception, Has.Message.EqualTo($"Can not add snapshot to buffer. This would cause the buffer to be out of order. Last t={time1:0.000}, new t={time2:0.000}"));
         }
     }
 
@@ -99,7 +100,7 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
             SnapshotBuffer<TransformState> buffer = CreateBuffer();
 
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => buffer.GetLinearInterpolation(default));
-            Assert.That(exception, Has.Message.EqualTo("No snapshots in buffer"));
+            Assert.That(exception, Has.Message.EqualTo("No snapshots in buffer."));
         }
 
         [Test]
@@ -109,9 +110,12 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
             SnapshotBuffer<TransformState> buffer = CreateBuffer();
             buffer.AddSnapShot(state, default);
 
-            LogAssert.Expect(LogType.Log, "[DEBUG] First snapshot");
-            TransformState value = buffer.GetLinearInterpolation(now);
-            Assert.That(value, Is.EqualTo(state));
+            using (new SetLogLevel<SnapshotBuffer<TransformState>>(LogType.Log))
+            {
+                LogAssert.Expect(LogType.Log, "First snapshot");
+                TransformState value = buffer.GetLinearInterpolation(now);
+                Assert.That(value, Is.EqualTo(state));
+            }
         }
 
         [Test]
@@ -126,9 +130,12 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
             buffer.AddSnapShot(state1, time1);
             buffer.AddSnapShot(state2, time2);
 
-            LogAssert.Expect(LogType.Log, $"[DEBUG] No snapshots for t={now:0.000}, using earliest t={time1:0.000}");
-            TransformState value = buffer.GetLinearInterpolation(now);
-            Assert.That(value, Is.EqualTo(state1));
+            using (new SetLogLevel<SnapshotBuffer<TransformState>>(LogType.Log))
+            {
+                LogAssert.Expect(LogType.Log, $"No snapshots for t = {now:0.000}, using earliest t = {time1:0.000}");
+                TransformState value = buffer.GetLinearInterpolation(now);
+                Assert.That(value, Is.EqualTo(state1));
+            }
         }
 
         [Test]
@@ -143,9 +150,12 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
             buffer.AddSnapShot(state1, time1);
             buffer.AddSnapShot(state2, time2);
 
-            LogAssert.Expect(LogType.Warning, $"[WARN] No snapshots for t={now:0.000}, using first t={time1:0.000} last t={time2:0.000}");
-            TransformState value = buffer.GetLinearInterpolation(now);
-            Assert.That(value, Is.EqualTo(state2));
+            using (new SetLogLevel<SnapshotBuffer<TransformState>>(LogType.Log))
+            {
+                LogAssert.Expect(LogType.Log, $"No snapshots for t = {now:0.000}, using first t = {time1:0.000}, last t = {time2:0.000}");
+                TransformState value = buffer.GetLinearInterpolation(now);
+                Assert.That(value, Is.EqualTo(state2));
+            }
         }
 
         [Test]
@@ -173,7 +183,7 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
         public void ShouldSayEmptyBuffer()
         {
             SnapshotBuffer<TransformState> buffer = CreateBuffer();
-            string str = buffer.ToString();
+            string str = buffer.ToDebugString(0);
             Assert.That(str, Is.EqualTo("Buffer Empty"));
         }
         [Test]
@@ -183,6 +193,23 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
             SnapshotBuffer<TransformState> buffer = CreateBuffer();
             string str = buffer.ToString();
             //Assert.Ignore("NotImplemented");
+        }
+    }
+
+    struct SetLogLevel<T> : IDisposable
+    {
+        private ILogger logger;
+        private LogType startingLevel;
+
+        public SetLogLevel(LogType targetLevel)
+        {
+            logger = LogFactory.GetLogger<T>();
+            startingLevel = logger.filterLogType;
+            logger.filterLogType = targetLevel;
+        }
+        public void Dispose()
+        {
+            logger.filterLogType = startingLevel;
         }
     }
 }

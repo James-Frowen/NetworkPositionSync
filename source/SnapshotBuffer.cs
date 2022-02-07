@@ -129,7 +129,7 @@ namespace JamesFrowen.PositionSync
             if (Last.time < now)
             {
                 if (logger.LogEnabled())
-                    logger.Log($"No snapshots for t = {now:0.000}, using first t = {buffer[0].time:0.000},  last t = {Last.time:0.000}");
+                    logger.Log($"No snapshots for t = {now:0.000}, using first t = {buffer[0].time:0.000}, last t = {Last.time:0.000}");
                 return Last.state;
             }
 
