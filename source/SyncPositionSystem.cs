@@ -82,17 +82,20 @@ namespace JamesFrowen.PositionSync
 
         public void AddBehaviour(SyncPositionBehaviour thing)
         {
+            if (logger.LogEnabled()) logger.Log($"Added {thing.NetId}");
             uint netId = thing.NetId;
             _behaviours.Add(netId, thing);
         }
 
         public void RemoveBehaviour(SyncPositionBehaviour thing)
         {
+            if (logger.LogEnabled()) logger.Log($"Removed {thing.NetId}");
             uint netId = thing.NetId;
             _behaviours.Remove(netId);
         }
         public void ClearBehaviours()
         {
+            if (logger.LogEnabled()) logger.Log($"Cleared");
             _behaviours.Clear();
         }
     }
