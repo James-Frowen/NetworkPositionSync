@@ -187,6 +187,8 @@ namespace JamesFrowen.PositionSync
             if (!ServerActive)
                 timer = new Timer();
 
+            // reset time incase this is 2nd time client starts
+            _timeSync.Reset();
             Client.MessageHandler.RegisterHandler<NetworkPositionMessage>(ClientHandleNetworkPositionMessage);
         }
 

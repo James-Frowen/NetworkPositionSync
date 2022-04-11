@@ -165,7 +165,10 @@ namespace JamesFrowen.PositionSync
         /// <param name="serverTime"></param>
         public void OnMessage(float serverTime)
         {
-            logger.Assert(serverTime > _latestServerTime, $"Received message out of order. Server Time: {serverTime} vs New Time: {_latestServerTime}");
+            // only check this if we are intialized
+            if (intialized)
+                logger.Assert(serverTime > _latestServerTime, $"Received message out of order. Server Time: {serverTime} vs New Time: {_latestServerTime}");
+
             _latestServerTime = serverTime;
 
             // If this is the first message, set the client time to the server difference.
@@ -196,6 +199,16 @@ namespace JamesFrowen.PositionSync
 
             // todo add trace level
             if (logger.LogEnabled()) logger.Log($"st: {serverTime:0.00}, ct: {_clientTime:0.00}, diff: {diff * 1000:0.0}, wanted: {diffAvg.Value * 1000:0.0}, scale: {clientScaleTime}");
+        }
+
+        /// <summary>
+        /// Call this when start new client to reset timer
+        /// </summary>
+        public void Reset()
+        {
+            // mark this so first server method will call InitNew
+            intialized = false;
+            _latestServerTime = 0;
         }
 
         /// <summary>
