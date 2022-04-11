@@ -161,10 +161,14 @@ namespace JamesFrowen.PositionSync
             Server?.Started.AddListener(ServerStarted);
             Client?.Started.AddListener(ClientStarted);
 
+            Server?.Stopped.AddListener(ServerStopped);
+            Client?.Disconnected.AddListener(ClientStopped);
+
 
             _timeSync = new InterpolationTime(1 / SyncRate, tickDelay: TickDelayCount, timeScale: 0.1f);
             packer = new SyncPacker(PackSettings);
         }
+
         private void OnValidate()
         {
             packer = new SyncPacker(PackSettings ?? new SyncSettings());
@@ -190,6 +194,25 @@ namespace JamesFrowen.PositionSync
         {
             timer = new Timer();
             Server.MessageHandler.RegisterHandler<NetworkPositionSingleMessage>(ServerHandleNetworkPositionMessage);
+        }
+
+        private void ClientStopped(ClientStoppedReason arg0)
+        {
+            Cleanup();
+        }
+
+        private void ServerStopped()
+        {
+            Cleanup();
+        }
+
+        /// <summary>
+        /// shared clean up for both server/client
+        /// </summary>
+        private void Cleanup()
+        {
+            // clear all just incase they fail to remove themselves
+            Behaviours.ClearBehaviours();
         }
 
 
