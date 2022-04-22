@@ -522,7 +522,7 @@ namespace JamesFrowen.PositionSync
             if (ServerActive)
                 return;
 
-            using (PooledNetworkReader reader = NetworkReaderPool.GetReader(msg.payload))
+            using (PooledNetworkReader reader = NetworkReaderPool.GetReader(msg.payload, null))
             {
                 float time = packer.UnpackTime(reader);
 
@@ -546,7 +546,7 @@ namespace JamesFrowen.PositionSync
         /// <param name="arg2"></param>
         internal void ServerHandleNetworkPositionMessage(INetworkPlayer _, NetworkPositionSingleMessage msg)
         {
-            using (PooledNetworkReader reader = NetworkReaderPool.GetReader(msg.payload))
+            using (PooledNetworkReader reader = NetworkReaderPool.GetReader(msg.payload, null))
             {
                 //float time = packer.UnpackTime(reader);
                 packer.UnpackNext(reader, out uint id, out Vector3 pos, out Quaternion rot);
