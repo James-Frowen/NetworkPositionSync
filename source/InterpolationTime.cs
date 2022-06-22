@@ -115,7 +115,17 @@ namespace JamesFrowen.PositionSync
             get => _latestServerTime;
         }
 
+        [System.Obsolete("Use Time instead")]
         public float InterpolationTimeField
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => Time;
+        }
+
+        /// <summary>
+        /// Current time to use for interpolation 
+        /// </summary>
+        public float Time
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _clientTime - _clientDelay;
