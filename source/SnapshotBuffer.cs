@@ -169,7 +169,7 @@ namespace JamesFrowen.PositionSync
         /// Removes snapshots older than <paramref name="oldTime"/>.
         /// </summary>
         /// <param name="oldTime"></param>
-        public void RemoveOldSnapshots(float oldTime)
+        public void RemoveOldSnapshots(double oldTime)
         {
             // Loop from newest to oldest...
             for (int i = buffer.Count - 1; i >= 0; i--)
@@ -191,7 +191,7 @@ namespace JamesFrowen.PositionSync
         }
 
         // Used for debug purposes. Move along...
-        public string ToDebugString(float now)
+        public string ToDebugString(double now)
         {
             if (buffer.Count == 0) { return "Buffer Empty"; }
 
