@@ -146,6 +146,8 @@ namespace JamesFrowen.PositionSync
         public SyncSettings PackSettings = new SyncSettings();
         [NonSerialized] public SyncPacker packer;
 
+        [Tooltip("What channel to send messages on")]
+        public Channel MessageChannel;
 
         [Header("Synchronization Settings")]
         [Tooltip("How many updates to perform per second. For best performance, set to a value below your maximum frame rate.")]
@@ -326,10 +328,11 @@ namespace JamesFrowen.PositionSync
                     behaviour.ClearNeedsUpdate();
                 }
 
-                Server.SendToAll(new NetworkPositionMessage
+                var msg = new NetworkPositionMessage
                 {
                     payload = writer.ToArraySegment()
-                });
+                };
+                Server.SendToAll(msg, (int)MessageChannel);
             }
         }
 
@@ -360,10 +363,11 @@ namespace JamesFrowen.PositionSync
                         packer.PackNext(writer, behaviour);
                     }
 
-                    player.Send(new NetworkPositionMessage
+                    var msg = new NetworkPositionMessage
                     {
                         payload = writer.ToArraySegment()
-                    });
+                    };
+                    player.Send(msg, (int)MessageChannel);
                 }
             }
 
@@ -400,10 +404,11 @@ namespace JamesFrowen.PositionSync
                         writer.CopyFromWriter(packed);
                     }
 
-                    player.Send(new NetworkPositionMessage
+                    var msg = new NetworkPositionMessage
                     {
                         payload = writer.ToArraySegment()
-                    });
+                    };
+                    player.Send(msg, (int)MessageChannel);
                 }
             }
 
@@ -455,7 +460,8 @@ namespace JamesFrowen.PositionSync
             {
                 var writer = GetWriterFromPool(time, player);
 
-                player.Send(new NetworkPositionMessage { payload = writer.ToArraySegment() });
+                var msg = new NetworkPositionMessage { payload = writer.ToArraySegment() };
+                player.Send(msg, (int)MessageChannel);
                 writer.Release();
             }
             writerPool.Clear();
@@ -498,7 +504,8 @@ namespace JamesFrowen.PositionSync
             {
                 var writer = GetWriterFromPool(time, player);
 
-                player.Send(new NetworkPositionMessage { payload = writer.ToArraySegment() });
+                var msg = new NetworkPositionMessage { payload = writer.ToArraySegment() };
+                player.Send(msg, (int)MessageChannel);
                 writer.Release();
             }
             writerPool.Clear();
@@ -615,6 +622,13 @@ namespace JamesFrowen.PositionSync
                 _delta = _now - _previous;
                 _previous = _now;
             }
+        }
+
+
+        public enum Channel
+        {
+            Reliable = Mirage.Channel.Reliable,
+            Unreliable = Mirage.Channel.Unreliable,
         }
     }
 

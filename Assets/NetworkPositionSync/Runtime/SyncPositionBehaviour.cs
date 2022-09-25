@@ -373,18 +373,19 @@ namespace JamesFrowen.PositionSync
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void SendMessageToServer()
+        private void SendMessageToServer()
         {
-            using (PooledNetworkWriter writer = NetworkWriterPool.GetWriter())
+            using (var writer = NetworkWriterPool.GetWriter())
             {
                 // todo does client need to send time?
                 //_system.packer.PackTime(writer, (float)NetworkTime.Time);
                 _system.packer.PackNext(writer, this);
 
-                Client.Send(new NetworkPositionSingleMessage
+                var msg = new NetworkPositionSingleMessage
                 {
                     payload = writer.ToArraySegment()
-                });
+                };
+                Client.Send(msg, (int)_system.MessageChannel);
             }
         }
 
