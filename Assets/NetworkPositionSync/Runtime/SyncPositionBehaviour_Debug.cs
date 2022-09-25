@@ -31,9 +31,9 @@ namespace JamesFrowen.PositionSync
     [RequireComponent(typeof(SyncPositionBehaviour))]
     public class SyncPositionBehaviour_Debug : NetworkBehaviour
     {
-        SyncPositionBehaviour behaviour;
-        List<GameObject> markers = new List<GameObject>();
-        SyncPositionSystem _system;
+        private SyncPositionBehaviour behaviour;
+        private List<GameObject> markers = new List<GameObject>();
+        private SyncPositionSystem _system;
         public float maxTime = 5;
         public float MaxScale = 1;
 
@@ -47,26 +47,26 @@ namespace JamesFrowen.PositionSync
             if (_system == null)
                 _system = ClientObjectManager.GetComponent<SyncPositionSystem>();
 
-            foreach (GameObject marker in markers)
+            foreach (var marker in markers)
                 marker.SetActive(false);
 
-            IReadOnlyList<SnapshotBuffer<TransformState>.Snapshot> buffer = behaviour.snapshotBuffer.DebugBuffer;
-            for (int i = 0; i < buffer.Count; i++)
+            var buffer = behaviour.snapshotBuffer.DebugBuffer;
+            for (var i = 0; i < buffer.Count; i++)
             {
-                SnapshotBuffer<TransformState>.Snapshot snapshot = buffer[i];
+                var snapshot = buffer[i];
                 if (markers.Count <= i)
                     markers.Add(CreateMarker());
 
                 markers[i].SetActive(true);
                 markers[i].transform.SetPositionAndRotation(snapshot.state.position, snapshot.state.rotation);
-                Vector3 pos = snapshot.state.position;
-                float hash = pos.x * 501 + pos.z;
+                var pos = snapshot.state.position;
+                var hash = pos.x * 501 + pos.z;
                 markers[i].GetComponent<Renderer>().material.color = Color.HSVToRGB((hash * 20) % 1, 1, 1);
-                float snapshotTime = _system.TimeSync.InterpolationTimeField;
+                var snapshotTime = _system.TimeSync.InterpolationTimeField;
 
-                float absTimeDiff = Mathf.Abs(snapshotTime - (float)snapshot.time);
-                float sizeFromDiff = Mathf.Clamp01((maxTime - absTimeDiff) / maxTime);
-                float scale = sizeFromDiff * MaxScale;
+                var absTimeDiff = Mathf.Abs(snapshotTime - (float)snapshot.time);
+                var sizeFromDiff = Mathf.Clamp01((maxTime - absTimeDiff) / maxTime);
+                var scale = sizeFromDiff * MaxScale;
                 markers[i].transform.localScale = Vector3.one * scale;
             }
         }

@@ -28,26 +28,26 @@ namespace JamesFrowen.PositionSync
 {
     public class WorldStateBuffer
     {
-        uint head;
-        WorldState[] ring;
+        private uint head;
+        private WorldState[] ring;
     }
 
     public class WorldState
     {
-        struct StateWithId
+        private struct StateWithId
         {
             public uint netid;
             public TransformState state;
         }
 
-        readonly List<StateWithId> state = new List<StateWithId>();
+        private readonly List<StateWithId> state = new List<StateWithId>();
 
         public void CollectState(IEnumerable<KeyValuePair<uint, SyncPositionBehaviour>> behaviours)
         {
-            foreach (KeyValuePair<uint, SyncPositionBehaviour> keyValuePair in behaviours)
+            foreach (var keyValuePair in behaviours)
             {
-                SyncPositionBehaviour behaviour = keyValuePair.Value;
-                uint netid = keyValuePair.Key;
+                var behaviour = keyValuePair.Value;
+                var netid = keyValuePair.Key;
 
                 state.Add(new StateWithId
                 {

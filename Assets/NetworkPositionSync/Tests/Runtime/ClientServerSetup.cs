@@ -1,7 +1,7 @@
-﻿using Cysharp.Threading.Tasks;
+using System.Collections;
+using Cysharp.Threading.Tasks;
 using Mirage;
 using Mirage.Tests;
-using System.Collections;
 using UnityEngine.TestTools;
 
 namespace JamesFrowen.PositionSync.Tests.Runtime

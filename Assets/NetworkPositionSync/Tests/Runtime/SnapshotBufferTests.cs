@@ -21,14 +21,14 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
         [Test]
         public void ShouldBeTrueOnNewBuffer()
         {
-            SnapshotBuffer<TransformState> buffer = CreateBuffer();
+            var buffer = CreateBuffer();
             Assert.That(buffer.IsEmpty, Is.True);
         }
 
         [Test]
         public void ShouldBeFalseAfterAddingToBuffer()
         {
-            SnapshotBuffer<TransformState> buffer = CreateBuffer();
+            var buffer = CreateBuffer();
             buffer.AddSnapShot(default, default);
             Assert.That(buffer.IsEmpty, Is.False);
         }
@@ -36,7 +36,7 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
         [Test]
         public void ShouldBeTrueAfterRemovingFromBuffer()
         {
-            SnapshotBuffer<TransformState> buffer = CreateBuffer();
+            var buffer = CreateBuffer();
             buffer.AddSnapShot(default, 0);
             buffer.RemoveOldSnapshots(1);
             Assert.That(buffer.IsEmpty, Is.True);
@@ -49,7 +49,7 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
         [Test]
         public void ShouldOnlyRemoveOld()
         {
-            SnapshotBuffer<TransformState> buffer = CreateBuffer();
+            var buffer = CreateBuffer();
             buffer.AddSnapShot(default, 0);
             buffer.AddSnapShot(default, 1);
             Assert.That(buffer.SnapshotCount, Is.EqualTo(2));
@@ -68,8 +68,8 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
         [Test]
         public void ShouldIncreaseCount([Range(1, 5)] int count)
         {
-            SnapshotBuffer<TransformState> buffer = CreateBuffer();
-            for (int i = 0; i < count; i++)
+            var buffer = CreateBuffer();
+            for (var i = 0; i < count; i++)
             {
                 Assert.That(buffer.SnapshotCount, Is.EqualTo(i));
                 buffer.AddSnapShot(default, i);
@@ -83,10 +83,10 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
             const float time1 = 1.1f;
             const float time2 = 0.9f;
 
-            SnapshotBuffer<TransformState> buffer = CreateBuffer();
+            var buffer = CreateBuffer();
             buffer.AddSnapShot(default, time1);
 
-            ArgumentException exception = Assert.Throws<ArgumentException>(() => buffer.AddSnapShot(default, time2));
+            var exception = Assert.Throws<ArgumentException>(() => buffer.AddSnapShot(default, time2));
             Assert.That(exception, Has.Message.EqualTo($"Can not add snapshot to buffer. This would cause the buffer to be out of order. Last t={time1:0.000}, new t={time2:0.000}"));
         }
     }
@@ -97,9 +97,9 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
         [Test]
         public void ShouldGiveErrorWhenEmpty()
         {
-            SnapshotBuffer<TransformState> buffer = CreateBuffer();
+            var buffer = CreateBuffer();
 
-            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => buffer.GetLinearInterpolation(default));
+            var exception = Assert.Throws<InvalidOperationException>(() => buffer.GetLinearInterpolation(default));
             Assert.That(exception, Has.Message.EqualTo("No snapshots in buffer."));
         }
 
@@ -107,13 +107,13 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
         public void ShouldReturnFirstIfOnly1Snapshot([Range(0, 10, 1f)] float now)
         {
             var state = new TransformState(Vector3.one, Quaternion.identity);
-            SnapshotBuffer<TransformState> buffer = CreateBuffer();
+            var buffer = CreateBuffer();
             buffer.AddSnapShot(state, default);
 
             using (new SetLogLevel<SnapshotBuffer<TransformState>>(LogType.Log))
             {
                 LogAssert.Expect(LogType.Log, "First snapshot");
-                TransformState value = buffer.GetLinearInterpolation(now);
+                var value = buffer.GetLinearInterpolation(now);
                 Assert.That(value, Is.EqualTo(state));
             }
         }
@@ -126,14 +126,14 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
             var state1 = new TransformState(Vector3.one, Quaternion.identity);
             var state2 = new TransformState(Vector3.one * 2, Quaternion.identity);
 
-            SnapshotBuffer<TransformState> buffer = CreateBuffer();
+            var buffer = CreateBuffer();
             buffer.AddSnapShot(state1, time1);
             buffer.AddSnapShot(state2, time2);
 
             using (new SetLogLevel<SnapshotBuffer<TransformState>>(LogType.Log))
             {
                 LogAssert.Expect(LogType.Log, $"No snapshots for t = {now:0.000}, using earliest t = {time1:0.000}");
-                TransformState value = buffer.GetLinearInterpolation(now);
+                var value = buffer.GetLinearInterpolation(now);
                 Assert.That(value, Is.EqualTo(state1));
             }
         }
@@ -146,14 +146,14 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
             var state1 = new TransformState(Vector3.one, Quaternion.identity);
             var state2 = new TransformState(Vector3.one * 2, Quaternion.identity);
 
-            SnapshotBuffer<TransformState> buffer = CreateBuffer();
+            var buffer = CreateBuffer();
             buffer.AddSnapShot(state1, time1);
             buffer.AddSnapShot(state2, time2);
 
             using (new SetLogLevel<SnapshotBuffer<TransformState>>(LogType.Log))
             {
                 LogAssert.Expect(LogType.Log, $"No snapshots for t = {now:0.000}, using first t = {time1:0.000}, last t = {time2:0.000}");
-                TransformState value = buffer.GetLinearInterpolation(now);
+                var value = buffer.GetLinearInterpolation(now);
                 Assert.That(value, Is.EqualTo(state2));
             }
         }
@@ -167,11 +167,11 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
             var state2 = new TransformState(Vector3.one * 2, Quaternion.identity);
             var expected = new TransformState(Vector3.Lerp(state1.position, state2.position, now - time1), Quaternion.identity);
 
-            SnapshotBuffer<TransformState> buffer = CreateBuffer();
+            var buffer = CreateBuffer();
             buffer.AddSnapShot(state1, time1);
             buffer.AddSnapShot(state2, time2);
 
-            TransformState value = buffer.GetLinearInterpolation(now);
+            var value = buffer.GetLinearInterpolation(now);
             Assert.That(value, Is.EqualTo(expected));
         }
     }
@@ -182,21 +182,21 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
         [Test]
         public void ShouldSayEmptyBuffer()
         {
-            SnapshotBuffer<TransformState> buffer = CreateBuffer();
-            string str = buffer.ToDebugString(0);
+            var buffer = CreateBuffer();
+            var str = buffer.ToDebugString(0);
             Assert.That(str, Is.EqualTo("Buffer Empty"));
         }
         [Test]
         [Ignore("NotImplemented")]
         public void ShouldListSnapshotsInBuffer()
         {
-            SnapshotBuffer<TransformState> buffer = CreateBuffer();
-            string str = buffer.ToString();
+            var buffer = CreateBuffer();
+            var str = buffer.ToString();
             //Assert.Ignore("NotImplemented");
         }
     }
 
-    struct SetLogLevel<T> : IDisposable
+    internal struct SetLogLevel<T> : IDisposable
     {
         private ILogger logger;
         private LogType startingLevel;

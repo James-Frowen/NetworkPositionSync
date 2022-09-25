@@ -60,43 +60,42 @@ namespace JamesFrowen.PositionSync
     /// </remarks>
     public class InterpolationTime
     {
-        static readonly ILogger logger = LogFactory.GetLogger<InterpolationTime>();
+        private static readonly ILogger logger = LogFactory.GetLogger<InterpolationTime>();
+        private bool intialized;
 
-        bool intialized;
         /// <summary>
         /// The time value that the client uses to interpolate
         /// </summary>
-        float _clientTime;
+        private float _clientTime;
+
         /// <summary>
         /// The client will multiply deltaTime by this scale time value each frame
         /// </summary>
-        float clientScaleTime;
-
-        readonly ExponentialMovingAverage diffAvg;
+        private float clientScaleTime;
+        private readonly ExponentialMovingAverage diffAvg;
 
         /// <summary>
         /// How much above the goalOffset difference are we allowed to go before changing the timescale
         /// </summary>
-        readonly float positiveThreshold;
+        private readonly float positiveThreshold;
+
         /// <summary>
         /// How much below the goalOffset difference are we allowed to go before changing the timescale
         /// </summary>
-        readonly float negativeThreshold;
-
-        readonly float fastScale = 1.01f;
-        const float normalScale = 1f;
-        readonly float slowScale = 0.99f;
+        private readonly float negativeThreshold;
+        private readonly float fastScale = 1.01f;
+        private const float normalScale = 1f;
+        private readonly float slowScale = 0.99f;
 
         /// <summary>
         /// Is the difference between previous time and new time too far apart?
         /// If so, reset the client time.
         /// </summary>
-        readonly float _skipAheadThreshold;
-
-        float _clientDelay;
+        private readonly float _skipAheadThreshold;
+        private float _clientDelay;
 
         // Used for debug purposes. Move along...
-        float _latestServerTime;
+        private float _latestServerTime;
 
         /// <summary>
         /// Timer that follows server time
@@ -192,7 +191,7 @@ namespace JamesFrowen.PositionSync
             }
 
             // Calculate the difference.
-            float diff = serverTime - _clientTime;
+            var diff = serverTime - _clientTime;
 
             // Are we falling behind?
             if (serverTime - _clientTime > _skipAheadThreshold)

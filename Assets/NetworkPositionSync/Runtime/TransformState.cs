@@ -44,7 +44,7 @@ namespace JamesFrowen.PositionSync
 
         public static ISnapshotInterpolator<TransformState> CreateInterpolator() => new Interpolator();
 
-        class Interpolator : ISnapshotInterpolator<TransformState>
+        private class Interpolator : ISnapshotInterpolator<TransformState>
         {
             public TransformState Lerp(TransformState a, TransformState b, float alpha)
             {

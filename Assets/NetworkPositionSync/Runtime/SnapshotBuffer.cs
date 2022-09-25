@@ -37,7 +37,7 @@ namespace JamesFrowen.PositionSync
     }
     public class SnapshotBuffer<T>
     {
-        static readonly ILogger logger = LogFactory.GetLogger<SnapshotBuffer<T>>();
+        private static readonly ILogger logger = LogFactory.GetLogger<SnapshotBuffer<T>>();
 
         internal struct Snapshot
         {
@@ -54,8 +54,8 @@ namespace JamesFrowen.PositionSync
             }
         }
 
-        readonly List<Snapshot> buffer = new List<Snapshot>();
-        readonly ISnapshotInterpolator<T> interpolator;
+        private readonly List<Snapshot> buffer = new List<Snapshot>();
+        private readonly ISnapshotInterpolator<T> interpolator;
 
         internal IReadOnlyList<Snapshot> DebugBuffer => buffer;
 
@@ -75,12 +75,12 @@ namespace JamesFrowen.PositionSync
             get => buffer.Count;
         }
 
-        Snapshot First
+        private Snapshot First
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => buffer[0];
         }
-        Snapshot Last
+        private Snapshot Last
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => buffer[buffer.Count - 1];
@@ -134,17 +134,17 @@ namespace JamesFrowen.PositionSync
             }
 
             // edge cases are returned about, if code gets to this for loop then a valid from/to should exist...
-            for (int i = 0; i < buffer.Count - 1; i++)
+            for (var i = 0; i < buffer.Count - 1; i++)
             {
-                Snapshot from = buffer[i];
-                Snapshot to = buffer[i + 1];
-                double fromTime = buffer[i].time;
-                double toTime = buffer[i + 1].time;
+                var from = buffer[i];
+                var to = buffer[i + 1];
+                var fromTime = buffer[i].time;
+                var toTime = buffer[i + 1].time;
 
                 // if between times, then use from/to
                 if (fromTime <= now && now <= toTime)
                 {
-                    float alpha = (float)Clamp01((now - fromTime) / (toTime - fromTime));
+                    var alpha = (float)Clamp01((now - fromTime) / (toTime - fromTime));
                     // todo add trace log
                     if (logger.LogEnabled()) logger.Log($"alpha:{alpha:0.000}");
 
@@ -172,7 +172,7 @@ namespace JamesFrowen.PositionSync
         public void RemoveOldSnapshots(double oldTime)
         {
             // Loop from newest to oldest...
-            for (int i = buffer.Count - 1; i >= 0; i--)
+            for (var i = buffer.Count - 1; i >= 0; i--)
             {
                 // Is this one older than oldTime? If so, evict it.
                 if (buffer[i].time < oldTime)
@@ -197,12 +197,12 @@ namespace JamesFrowen.PositionSync
 
             var builder = new StringBuilder();
             builder.AppendLine($"count:{buffer.Count}, minTime:{buffer[0].time:0.000}, maxTime:{buffer[buffer.Count - 1].time:0.000}");
-            for (int i = 0; i < buffer.Count; i++)
+            for (var i = 0; i < buffer.Count; i++)
             {
                 if (i != 0)
                 {
-                    double fromTime = buffer[i - 1].time;
-                    double toTime = buffer[i].time;
+                    var fromTime = buffer[i - 1].time;
+                    var toTime = buffer[i].time;
                     // if between times, then use from/to
                     if (fromTime <= now && now <= toTime)
                     {
