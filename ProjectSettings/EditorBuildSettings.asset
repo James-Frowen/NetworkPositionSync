@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1045 &1
+EditorBuildSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Example2/NetworkStartScene2.unity
+    guid: 7bd9d19d1b33ddb40809d55608dc8bed
+  - enabled: 1
+    path: Assets/Example2/PredictionScene2.unity
+    guid: 7fc351eef77275a4f907b79de8925034
+  - enabled: 1
+    path: Assets/Example2/PredictionSceneNoBootstrap.unity
+    guid: 74c588645394c2b4d9de9dda53714ed6
+  - enabled: 1
+    path: Assets/Example1/NetworkStartScene.unity
+    guid: 684f83e576cc4144eba2b6bf277f2fd0
+  - enabled: 1
+    path: Assets/Example1/PredictionScene.unity
+    guid: 4d633e063ae6e1747adc29a914b4d26c
+  - enabled: 1
+    path: Assets/ExampleTicks/ticksScene.unity
+    guid: 26da72a8e52fcd84b91ee7bc68e2169d
+  m_configObjects: {}

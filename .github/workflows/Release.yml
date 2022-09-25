@@ -8,44 +8,33 @@ on:
 jobs:
   Release:
     env:
+      SOURCE_PATH: Assets/NetworkPositionSync
+      # target path should be path inside unityPackage, should be inside asset folder
       TARGET_PATH: Assets/NetworkPositionSync
-    runs-on: windows-latest
-    # needs: Tests
+    runs-on: ubuntu-latest
     steps:
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: '3.1.100'
+
+      - name: Install unity-packer
+        run: dotnet tool install -g unity-packer
+
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: recursive
           fetch-depth: 0
-
-      - name: Setup dotnet
-        uses: actions/setup-dotnet@v1
-        with:
-          dotnet-version: '3.1.100'
-  
-      - name: Install unity-packer
-        run: dotnet tool install -g unity-packer
-  
-      - name: Package
-
-        run: >-
-          unity-packer pack NetworkPositionSync.unitypackage 
-          source ${{ env.TARGET_PATH }}/scripts
-          LICENSE ${{ env.TARGET_PATH }}/LICENSE 
-          README.md ${{ env.TARGET_PATH }}/README.md
-          
-      - uses: actions/upload-artifact@v1
-        with:
-          name: NetworkPositionSync.unitypackage
-          path: NetworkPositionSync.unitypackage
-
+    
       - name: Release
-        uses: cycjimmy/semantic-release-action@v2
-        with:
+        # id so output can be used by other steps
+        id: semantic 
+        uses: cycjimmy/semantic-release-action@v3
+        with:          
           extra_plugins: |
             @semantic-release/exec
             @semantic-release/changelog
             @semantic-release/git
-          branch: main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

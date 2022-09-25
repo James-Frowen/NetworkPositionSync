@@ -1,0 +1,26 @@
+branches: 
+  - "main"
+plugins:
+  - '@semantic-release/github'
+  - '@semantic-release/release-notes-generator'
+  - '@semantic-release/commit-analyzer'
+  - - '@semantic-release/changelog'
+    - changelogFile: 'Assets/NetworkPositionSync/CHANGELOG.md'
+  - - '@semantic-release/npm'
+    - npmPublish: false
+      pkgRoot: "Assets/NetworkPositionSync"
+  # run prepareCmd after other steps so that changes are included in package
+  - - '@semantic-release/exec'
+    # See .release.sh for what files are included in release
+    - prepareCmd: "sh ./.release.sh ${nextRelease.version}"
+  - - '@semantic-release/git'
+    - assets:
+        - 'Assets/NetworkPositionSync/Runtime/AssemblyInfo.cs'
+        - 'Assets/NetworkPositionSync/package.json'
+        - 'Assets/NetworkPositionSync/CHANGELOG.md'
+publish:
+  - path: "@semantic-release/github" 
+    assets: 
+      - path: "NetworkPositionSync.unitypackage"
+        label: "NetworkPositionSync ${nextRelease.version} Unity Package"
+        name: "NetworkPositionSync-${nextRelease.version}.unitypackage"
