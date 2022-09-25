@@ -1,23 +1,20 @@
 {
-    "name": "JamesFrowen.PositionSync.Tests.Runtime",
+    "name": "Mirage.Tests.Common",
     "references": [
-        "JamesFrowen.PositionSync",
+        "Mirage",
+        "Mirage.SocketLayer",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "Mirage",
-        "UniTask",
-        "Mirage.SocketLayer",
-        "Mirage.Tests.Common"
+        "UniTask"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": true,
     "precompiledReferences": [
+        "nunit.framework.dll",
         "NSubstitute.dll",
-        "Castle.Core.dll",
-        "System.Threading.Tasks.Extensions.dll",
-        "nunit.framework.dll"
+        "System.Threading.Tasks.Extensions.dll"
     ],
     "autoReferenced": false,
     "defineConstraints": [

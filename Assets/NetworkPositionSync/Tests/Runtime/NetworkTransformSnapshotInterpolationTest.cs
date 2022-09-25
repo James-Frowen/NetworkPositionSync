@@ -1,6 +1,5 @@
-using System.Collections;
-using Mirage.Tests.Runtime.ClientServer;
 using NUnit.Framework;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.TestTools;
 
@@ -56,7 +55,7 @@ namespace JamesFrowen.PositionSync.Tests.Runtime
         [UnityTest]
         public IEnumerator SyncPositionFromServerToClient()
         {
-            var positions = new Vector3[] {
+            Vector3[] positions = new Vector3[] {
                 new Vector3(1, 2, 3),
                 new Vector3(2, 2, 3),
                 new Vector3(2, 3, 5),
