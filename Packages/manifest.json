@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "com.miragenet.mirage": "128.3.1",
+    "com.miragenet.mirage": "128.4.0",
     "com.unity.collab-proxy": "1.2.16",
     "com.unity.ide.rider": "1.1.4",
     "com.unity.ide.vscode": "1.2.2",

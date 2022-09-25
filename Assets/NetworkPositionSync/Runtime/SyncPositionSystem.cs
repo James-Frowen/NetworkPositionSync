@@ -35,10 +35,10 @@ namespace JamesFrowen.PositionSync
 {
     public static class Benchmark
     {
-        static long[] frames;
-        static int index;
-        static bool isRecording;
-        static long start;
+        private static long[] frames;
+        private static int index;
+        private static bool isRecording;
+        private static long start;
 
         public static event Action<long[]> RecordingFinished;
 
@@ -61,7 +61,7 @@ namespace JamesFrowen.PositionSync
         {
             if (!isRecording) return;
 
-            long end = Stopwatch.GetTimestamp();
+            var end = Stopwatch.GetTimestamp();
             frames[index] = end - start;
             index++;
             if (index >= frames.Length)
@@ -74,29 +74,50 @@ namespace JamesFrowen.PositionSync
 
     public class SyncPositionBehaviourCollection
     {
-        static readonly ILogger logger = LogFactory.GetLogger<SyncPositionBehaviourCollection>();
+        private static readonly ILogger logger = LogFactory.GetLogger<SyncPositionBehaviourCollection>();
 
-        private Dictionary<uint, SyncPositionBehaviour> _behaviours = new Dictionary<uint, SyncPositionBehaviour>();
+        private Dictionary<NetworkBehaviour.Id, SyncPositionBehaviour> _behaviours = new Dictionary<NetworkBehaviour.Id, SyncPositionBehaviour>();
+        private readonly bool _includeComponentIndex;
 
-        public IReadOnlyDictionary<uint, SyncPositionBehaviour> Dictionary => _behaviours;
+        public SyncPositionBehaviourCollection(SyncSettings settings)
+        {
+            _includeComponentIndex = settings.IncludeComponentIndex;
+        }
+
+        public IReadOnlyDictionary<NetworkBehaviour.Id, SyncPositionBehaviour> Dictionary => _behaviours;
+
+
+        public bool TryGetValue(NetworkBehaviour.Id id, out SyncPositionBehaviour value)
+        {
+            UnityEngine.Debug.Assert(!_includeComponentIndex || id.ComponentIndex == 0, "ComponentIndex was not zero when _includeComponentIndex was disabled");
+            return _behaviours.TryGetValue(id, out value);
+        }
 
         public void AddBehaviour(SyncPositionBehaviour thing)
         {
             if (logger.LogEnabled()) logger.Log($"Added {thing.NetId}");
-            uint netId = thing.NetId;
-            _behaviours.Add(netId, thing);
+            var id = GetId(thing);
+            _behaviours.Add(id, thing);
         }
 
         public void RemoveBehaviour(SyncPositionBehaviour thing)
         {
             if (logger.LogEnabled()) logger.Log($"Removed {thing.NetId}");
-            uint netId = thing.NetId;
-            _behaviours.Remove(netId);
+            var id = GetId(thing);
+            _behaviours.Remove(id);
         }
         public void ClearBehaviours()
         {
             if (logger.LogEnabled()) logger.Log($"Cleared");
             _behaviours.Clear();
+        }
+
+        private NetworkBehaviour.Id GetId(SyncPositionBehaviour thing)
+        {
+            if (_includeComponentIndex)
+                return thing.BehaviourId;
+            else
+                return new NetworkBehaviour.Id(thing.NetId, 0);
         }
     }
 
@@ -113,7 +134,7 @@ namespace JamesFrowen.PositionSync
     [AddComponentMenu("Network/SyncPosition/SyncPositionSystem")]
     public class SyncPositionSystem : MonoBehaviour
     {
-        static readonly ILogger logger = LogFactory.GetLogger<SyncPositionSystem>();
+        private static readonly ILogger logger = LogFactory.GetLogger<SyncPositionSystem>();
 
         // todo make this work with network Visibility
         // todo add maxMessageSize (splits up update message into multiple messages if too big)
@@ -125,13 +146,14 @@ namespace JamesFrowen.PositionSync
         public SyncSettings PackSettings = new SyncSettings();
         [NonSerialized] public SyncPacker packer;
 
+
         [Header("Synchronization Settings")]
         [Tooltip("How many updates to perform per second. For best performance, set to a value below your maximum frame rate.")]
         public float SyncRate = 20;
         public float FixedSyncInterval => 1 / SyncRate;
 
-        Timer timer;
-        float syncTimer;
+        private Timer timer;
+        private float syncTimer;
 
         [Header("Snapshot Interpolation")]
         [Tooltip("Number of ticks to delay interpolation to make sure there is always a snapshot to interpolate towards. High delay can handle more jitter, but adds latancy to the position.")]
@@ -141,12 +163,12 @@ namespace JamesFrowen.PositionSync
         public SyncMode syncMode = SyncMode.SendToAll;
 
         // cached object for update list
-        HashSet<SyncPositionBehaviour> dirtySet = new HashSet<SyncPositionBehaviour>();
-        HashSet<SyncPositionBehaviour> toUpdateObserverCache = new HashSet<SyncPositionBehaviour>();
+        private HashSet<SyncPositionBehaviour> dirtySet = new HashSet<SyncPositionBehaviour>();
+        private HashSet<SyncPositionBehaviour> toUpdateObserverCache = new HashSet<SyncPositionBehaviour>();
 
-        public SyncPositionBehaviourCollection Behaviours { get; } = new SyncPositionBehaviourCollection();
+        public SyncPositionBehaviourCollection Behaviours { get; private set; }
 
-        [NonSerialized] InterpolationTime _timeSync;
+        [NonSerialized] private InterpolationTime _timeSync;
         public InterpolationTime TimeSync
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -158,15 +180,15 @@ namespace JamesFrowen.PositionSync
 
         internal void Awake()
         {
+            _timeSync = new InterpolationTime(1 / SyncRate, tickDelay: TickDelayCount, timeScale: 0.1f);
+            packer = new SyncPacker(PackSettings);
+            Behaviours = new SyncPositionBehaviourCollection(PackSettings);
+
             Server?.Started.AddListener(ServerStarted);
             Client?.Started.AddListener(ClientStarted);
 
             Server?.Stopped.AddListener(ServerStopped);
             Client?.Disconnected.AddListener(ClientStopped);
-
-
-            _timeSync = new InterpolationTime(1 / SyncRate, tickDelay: TickDelayCount, timeScale: 0.1f);
-            packer = new SyncPacker(PackSettings);
         }
 
         private void OnValidate()
@@ -289,11 +311,11 @@ namespace JamesFrowen.PositionSync
                 return;
 
             UpdateDirtySet();
-            using (PooledNetworkWriter writer = NetworkWriterPool.GetWriter())
+            using (var writer = NetworkWriterPool.GetWriter())
             {
                 packer.PackTime(writer, time);
 
-                foreach (SyncPositionBehaviour behaviour in dirtySet)
+                foreach (var behaviour in dirtySet)
                 {
                     if (logger.LogEnabled())
                         logger.Log($"Time {time:0.000}, Packing {behaviour.name}");
@@ -323,14 +345,14 @@ namespace JamesFrowen.PositionSync
 
             UpdateDirtySet();
 
-            using (PooledNetworkWriter writer = NetworkWriterPool.GetWriter())
+            using (var writer = NetworkWriterPool.GetWriter())
             {
-                foreach (INetworkPlayer player in Server.Players)
+                foreach (var player in Server.Players)
                 {
                     writer.Reset();
 
                     packer.PackTime(writer, time);
-                    foreach (SyncPositionBehaviour behaviour in dirtySet)
+                    foreach (var behaviour in dirtySet)
                     {
                         if (!behaviour.Identity.observers.Contains(player))
                             continue;
@@ -362,19 +384,19 @@ namespace JamesFrowen.PositionSync
             UpdateDirtySet();
             NetworkWriterPool.Configure(100, 200);
 
-            using (PooledNetworkWriter writer = NetworkWriterPool.GetWriter())
+            using (var writer = NetworkWriterPool.GetWriter())
             {
-                foreach (INetworkPlayer player in Server.Players)
+                foreach (var player in Server.Players)
                 {
                     writer.Reset();
 
                     packer.PackTime(writer, time);
-                    foreach (SyncPositionBehaviour behaviour in dirtySet)
+                    foreach (var behaviour in dirtySet)
                     {
                         if (!behaviour.Identity.observers.Contains(player))
                             continue;
 
-                        PooledNetworkWriter packed = GetWriterFromPool_Behaviours(behaviour);
+                        var packed = GetWriterFromPool_Behaviours(behaviour);
                         writer.CopyFromWriter(packed);
                     }
 
@@ -385,7 +407,7 @@ namespace JamesFrowen.PositionSync
                 }
             }
 
-            foreach (PooledNetworkWriter writer in writerPool_Behaviours.Values)
+            foreach (var writer in writerPool_Behaviours.Values)
                 writer.Release();
 
             writerPool_Behaviours.Clear();
@@ -393,10 +415,11 @@ namespace JamesFrowen.PositionSync
             ClearDirtySet();
         }
 
-        Dictionary<SyncPositionBehaviour, PooledNetworkWriter> writerPool_Behaviours = new Dictionary<SyncPositionBehaviour, PooledNetworkWriter>();
-        PooledNetworkWriter GetWriterFromPool_Behaviours(SyncPositionBehaviour behaviour)
+        private Dictionary<SyncPositionBehaviour, PooledNetworkWriter> writerPool_Behaviours = new Dictionary<SyncPositionBehaviour, PooledNetworkWriter>();
+
+        private PooledNetworkWriter GetWriterFromPool_Behaviours(SyncPositionBehaviour behaviour)
         {
-            if (!writerPool_Behaviours.TryGetValue(behaviour, out PooledNetworkWriter writer))
+            if (!writerPool_Behaviours.TryGetValue(behaviour, out var writer))
             {
                 writer = NetworkWriterPool.GetWriter();
                 writerPool_Behaviours[behaviour] = writer;
@@ -418,19 +441,19 @@ namespace JamesFrowen.PositionSync
 
             UpdateDirtySet();
 
-            foreach (SyncPositionBehaviour behaviour in dirtySet)
+            foreach (var behaviour in dirtySet)
             {
-                foreach (INetworkPlayer observer in behaviour.Identity.observers)
+                foreach (var observer in behaviour.Identity.observers)
                 {
-                    PooledNetworkWriter writer = GetWriterFromPool(time, observer);
+                    var writer = GetWriterFromPool(time, observer);
 
                     packer.PackNext(writer, behaviour);
                 }
             }
 
-            foreach (INetworkPlayer player in Server.Players)
+            foreach (var player in Server.Players)
             {
-                PooledNetworkWriter writer = GetWriterFromPool(time, player);
+                var writer = GetWriterFromPool(time, player);
 
                 player.Send(new NetworkPositionMessage { payload = writer.ToArraySegment() });
                 writer.Release();
@@ -452,9 +475,9 @@ namespace JamesFrowen.PositionSync
                 return;
 
             UpdateDirtySet();
-            using (PooledNetworkWriter packWriter = NetworkWriterPool.GetWriter())
+            using (var packWriter = NetworkWriterPool.GetWriter())
             {
-                foreach (SyncPositionBehaviour behaviour in dirtySet)
+                foreach (var behaviour in dirtySet)
                 {
                     if (behaviour.Identity.observers.Count == 0)
                         continue;
@@ -462,18 +485,18 @@ namespace JamesFrowen.PositionSync
                     packWriter.Reset();
                     packer.PackNext(packWriter, behaviour);
 
-                    foreach (INetworkPlayer observer in behaviour.Identity.observers)
+                    foreach (var observer in behaviour.Identity.observers)
                     {
-                        PooledNetworkWriter writer = GetWriterFromPool(time, observer);
+                        var writer = GetWriterFromPool(time, observer);
 
                         writer.CopyFromWriter(packWriter);
                     }
                 }
             }
 
-            foreach (INetworkPlayer player in Server.Players)
+            foreach (var player in Server.Players)
             {
-                PooledNetworkWriter writer = GetWriterFromPool(time, player);
+                var writer = GetWriterFromPool(time, player);
 
                 player.Send(new NetworkPositionMessage { payload = writer.ToArraySegment() });
                 writer.Release();
@@ -483,10 +506,11 @@ namespace JamesFrowen.PositionSync
             ClearDirtySet();
         }
 
-        Dictionary<INetworkPlayer, PooledNetworkWriter> writerPool = new Dictionary<INetworkPlayer, PooledNetworkWriter>();
-        PooledNetworkWriter GetWriterFromPool(float time, INetworkPlayer player)
+        private Dictionary<INetworkPlayer, PooledNetworkWriter> writerPool = new Dictionary<INetworkPlayer, PooledNetworkWriter>();
+
+        private PooledNetworkWriter GetWriterFromPool(float time, INetworkPlayer player)
         {
-            if (!writerPool.TryGetValue(player, out PooledNetworkWriter writer))
+            if (!writerPool.TryGetValue(player, out var writer))
             {
                 writer = NetworkWriterPool.GetWriter();
                 packer.PackTime(writer, time);
@@ -499,7 +523,7 @@ namespace JamesFrowen.PositionSync
         private void UpdateDirtySet()
         {
             dirtySet.Clear();
-            foreach (SyncPositionBehaviour behaviour in Behaviours.Dictionary.Values)
+            foreach (var behaviour in Behaviours.Dictionary.Values)
             {
                 //if (!behaviour.NeedsUpdate())
                 //    continue;
@@ -510,7 +534,7 @@ namespace JamesFrowen.PositionSync
 
         private void ClearDirtySet()
         {
-            foreach (SyncPositionBehaviour behaviour in dirtySet)
+            foreach (var behaviour in dirtySet)
                 behaviour.ClearNeedsUpdate();
 
             dirtySet.Clear();
@@ -522,13 +546,13 @@ namespace JamesFrowen.PositionSync
             if (ServerActive)
                 return;
 
-            using (PooledNetworkReader reader = NetworkReaderPool.GetReader(msg.payload, null))
+            using (var reader = NetworkReaderPool.GetReader(msg.payload, null))
             {
-                float time = packer.UnpackTime(reader);
+                var time = packer.UnpackTime(reader);
 
-                while (packer.TryUnpackNext(reader, out uint id, out Vector3 pos, out Quaternion rot))
+                while (packer.TryUnpackNext(reader, out var id, out var pos, out var rot))
                 {
-                    if (Behaviours.Dictionary.TryGetValue(id, out SyncPositionBehaviour behaviour))
+                    if (Behaviours.Dictionary.TryGetValue(id, out var behaviour))
                         behaviour.ApplyOnClient(new TransformState(pos, rot), time);
                 }
 
@@ -546,12 +570,12 @@ namespace JamesFrowen.PositionSync
         /// <param name="arg2"></param>
         internal void ServerHandleNetworkPositionMessage(INetworkPlayer _, NetworkPositionSingleMessage msg)
         {
-            using (PooledNetworkReader reader = NetworkReaderPool.GetReader(msg.payload, null))
+            using (var reader = NetworkReaderPool.GetReader(msg.payload, null))
             {
                 //float time = packer.UnpackTime(reader);
-                packer.UnpackNext(reader, out uint id, out Vector3 pos, out Quaternion rot);
+                packer.UnpackNext(reader, out var id, out var pos, out var rot);
 
-                if (Behaviours.Dictionary.TryGetValue(id, out SyncPositionBehaviour behaviour))
+                if (Behaviours.TryGetValue(id, out var behaviour))
                     // todo fix host mode time
                     behaviour.ApplyOnServer(new TransformState(pos, rot), timer.Now);
                 else
@@ -564,10 +588,10 @@ namespace JamesFrowen.PositionSync
 
         public class Timer
         {
-            readonly Stopwatch stopwatch = Stopwatch.StartNew();
-            float _previous;
-            float _delta;
-            float _now;
+            private readonly Stopwatch stopwatch = Stopwatch.StartNew();
+            private float _previous;
+            private float _delta;
+            private float _now;
 
             public float Delta
             {

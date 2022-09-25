@@ -23,6 +23,7 @@ SOFTWARE.
 */
 
 using System;
+using Mirage;
 using Mirage.Serialization;
 using UnityEngine;
 
@@ -31,6 +32,10 @@ namespace JamesFrowen.PositionSync
     [Serializable]
     public class SyncSettings
     {
+        [Header("Object Settings")]
+        [Tooltip("Required if using multiple SyncPositionBehaviour per NetworkIdentity, but increase bandwidth")]
+        public bool IncludeComponentIndex;
+
         [Header("Timer Compression")]
         // public float maxTime = 60 * 60 * 24;
         // 0.1ms
@@ -67,10 +72,11 @@ namespace JamesFrowen.PositionSync
     public class SyncPacker
     {
         // packers
-        readonly VarFloatPacker timePacker;
-        readonly VarVector3Packer positionPacker;
-        readonly QuaternionPacker rotationPacker;
-        readonly int blockSize;
+        private readonly VarFloatPacker timePacker;
+        private readonly VarVector3Packer positionPacker;
+        private readonly QuaternionPacker rotationPacker;
+        private readonly int blockSize;
+        private readonly bool includeCompId;
 
         public SyncPacker(SyncSettings settings)
         {
@@ -78,6 +84,7 @@ namespace JamesFrowen.PositionSync
             positionPacker = settings.CreatePositionPacker();
             rotationPacker = settings.CreateRotationPacker();
             blockSize = settings.blockSize;
+            includeCompId = settings.IncludeComponentIndex;
         }
 
         public void PackTime(NetworkWriter writer, float time)
@@ -87,10 +94,17 @@ namespace JamesFrowen.PositionSync
 
         public void PackNext(NetworkWriter writer, SyncPositionBehaviour behaviour)
         {
-            uint id = behaviour.NetId;
-            TransformState state = behaviour.TransformState;
+            var id = behaviour.NetId;
+            var state = behaviour.TransformState;
+
 
             VarIntBlocksPacker.Pack(writer, id, blockSize);
+
+            if (includeCompId)
+            {
+                VarIntBlocksPacker.Pack(writer, (uint)behaviour.ComponentIndex, blockSize);
+            }
+
             positionPacker.Pack(writer, state.position);
             rotationPacker.Pack(writer, state.rotation);
         }
@@ -101,14 +115,24 @@ namespace JamesFrowen.PositionSync
             return timePacker.Unpack(reader);
         }
 
-        public void UnpackNext(NetworkReader reader, out uint id, out Vector3 pos, out Quaternion rot)
+        public void UnpackNext(NetworkReader reader, out NetworkBehaviour.Id id, out Vector3 pos, out Quaternion rot)
         {
-            id = (uint)VarIntBlocksPacker.Unpack(reader, blockSize);
+            var netId = (uint)VarIntBlocksPacker.Unpack(reader, blockSize);
+            if (includeCompId)
+            {
+                var componentIndex = (int)VarIntBlocksPacker.Unpack(reader, blockSize);
+                id = new NetworkBehaviour.Id(netId, componentIndex);
+            }
+            else
+            {
+                id = new NetworkBehaviour.Id(netId, 0);
+            }
+
             pos = positionPacker.Unpack(reader);
             rot = rotationPacker.Unpack(reader);
         }
 
-        internal bool TryUnpackNext(PooledNetworkReader reader, out uint id, out Vector3 pos, out Quaternion rot)
+        internal bool TryUnpackNext(PooledNetworkReader reader, out NetworkBehaviour.Id id, out Vector3 pos, out Quaternion rot)
         {
             // assume 1 state is atleast 3 bytes
             // (it should be more, but there shouldn't be random left over bits in reader so 3 is enough for check)

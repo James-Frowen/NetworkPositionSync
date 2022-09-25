@@ -1,7 +1,8 @@
 {
     "name": "JamesFrowen.PositionSync",
     "references": [
-        "Mirage"
+        "Mirage",
+        "Mirage.SocketLayer"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
