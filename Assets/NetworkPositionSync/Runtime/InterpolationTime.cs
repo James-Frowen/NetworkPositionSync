@@ -142,16 +142,16 @@ namespace JamesFrowen.PositionSync
 
         /// <param name="diffThreshold">How far off client time can be before changing its speed. A good recommended value is half of SyncInterval.</param>
         /// <param name="movingAverageCount">How many ticks are used for averaging purposes, you may need to increase or decrease with frame rate.</param>
-        public InterpolationTime(float tickInterval, float diffThreshold = 0.5f, float timeScale = 0.01f, float skipThreshold = 2.5f, float tickDelay = 2, int movingAverageCount = 30)
+        public InterpolationTime(float syncInterval, float diffThreshold = 0.5f, float timeScale = 0.01f, float skipThreshold = 2.5f, float tickDelay = 2, int movingAverageCount = 30)
         {
-            positiveThreshold = tickInterval * diffThreshold;
+            positiveThreshold = syncInterval * diffThreshold;
             negativeThreshold = -positiveThreshold;
-            _skipAheadThreshold = tickInterval * skipThreshold;
+            _skipAheadThreshold = syncInterval * skipThreshold;
 
             fastScale = normalScale + timeScale;
             slowScale = normalScale - timeScale;
 
-            _clientDelay = tickInterval * tickDelay;
+            _clientDelay = syncInterval * tickDelay;
 
             diffAvg = new ExponentialMovingAverage(movingAverageCount);
 

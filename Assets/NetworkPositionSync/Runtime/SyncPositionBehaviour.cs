@@ -31,6 +31,7 @@ using UnityEngine;
 
 namespace JamesFrowen.PositionSync
 {
+    public class SyncPositionBehaviour_StandAlone : SyncPositionBehaviour { }
     /// <summary>
     /// This NetworkBehaviour allows position and rotation synchronization over the network. Keep in mind that the <see cref="SyncPositionSystem"/> is 
     /// still required in order to actually sync the data over the network.
@@ -134,12 +135,12 @@ namespace JamesFrowen.PositionSync
         {
             if (showDebugGui)
             {
-                var delay = _system.TimeSync.LatestServerTime - _system.TimeSync.InterpolationTimeField;
+                var delay = _system.InterpolationTime.LatestServerTime - _system.InterpolationTime.InterpolationTimeField;
                 timeDelayAvg.Add(delay);
-                GUILayout.Label($"ServerTime: {_system.TimeSync.LatestServerTime:0.000}");
-                GUILayout.Label($"InterpTime: {_system.TimeSync.InterpolationTimeField:0.000}");
-                GUILayout.Label($"Time Delta: {delay:0.000} smooth:{timeDelayAvg.Value:0.000} scale:{_system.TimeSync.DebugScale:0.000}");
-                GUILayout.Label(snapshotBuffer.ToDebugString(_system.TimeSync.InterpolationTimeField));
+                GUILayout.Label($"ServerTime: {_system.InterpolationTime.LatestServerTime:0.000}");
+                GUILayout.Label($"InterpTime: {_system.InterpolationTime.InterpolationTimeField:0.000}");
+                GUILayout.Label($"Time Delta: {delay:0.000} smooth:{timeDelayAvg.Value:0.000} scale:{_system.InterpolationTime.DebugScale:0.000}");
+                GUILayout.Label(snapshotBuffer.ToDebugString(_system.InterpolationTime.InterpolationTimeField));
             }
         }
 #endif
@@ -385,7 +386,7 @@ namespace JamesFrowen.PositionSync
                 {
                     payload = writer.ToArraySegment()
                 };
-                Client.Send(msg, (int)_system.MessageChannel);
+                Client.Send(msg, Channel.Unreliable);
             }
         }
 
@@ -408,7 +409,7 @@ namespace JamesFrowen.PositionSync
             if (snapshotBuffer.IsEmpty)
                 return;
 
-            var snapshotTime = _system.TimeSync.InterpolationTimeField;
+            var snapshotTime = _system.InterpolationTime.InterpolationTimeField;
             var state = snapshotBuffer.GetLinearInterpolation(snapshotTime);
             // todo add trace log
             if (logger.LogEnabled())
@@ -418,7 +419,7 @@ namespace JamesFrowen.PositionSync
             Rotation = state.rotation;
 
             // remove snapshots older than 2times sync interval, they will never be used by Interpolation
-            var removeTime = snapshotTime - (_system.TimeSync.ClientDelay * 1.5f);
+            var removeTime = snapshotTime - (_system.InterpolationTime.ClientDelay * 1.5f);
             snapshotBuffer.RemoveOldSnapshots(removeTime);
         }
         #endregion
@@ -436,6 +437,8 @@ namespace JamesFrowen.PositionSync
             snapshotBuffer.ClearBuffer();
             transform.SetPositionAndRotation(position, rotation);
         }
+
+
         #endregion
     }
 }

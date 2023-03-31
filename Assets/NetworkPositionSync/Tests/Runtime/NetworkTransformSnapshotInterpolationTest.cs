@@ -59,8 +59,6 @@ namespace JamesFrowen.PositionSync.Tests.Runtime
             base.ExtraSetup();
             var serverSystem = serverGo.AddComponent<SyncPositionSystem>();
             var clientSystem = clientGo.AddComponent<SyncPositionSystem>();
-            serverSystem.PackSettings.IncludeComponentIndex = true;
-            clientSystem.PackSettings.IncludeComponentIndex = true;
 
             serverSystem.Server = server;
             serverSystem.Awake();
