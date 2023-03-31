@@ -9,7 +9,7 @@ using UnityEngine.TestTools;
 namespace JamesFrowen.PositionSync.Tests.Runtime
 {
     [Category("NetworkPositionSync")]
-    public class NetworkTransformSnapshotInterpolationTest : ClientServerSetup<SyncPositionBehaviour>
+    public class NetworkTransformSnapshotInterpolationTest : ClientServerSetup<NetworkTransform3D>
     {
         public override void ExtraSetup()
         {
@@ -47,7 +47,7 @@ namespace JamesFrowen.PositionSync.Tests.Runtime
     }
 
     [Category("NetworkPositionSync")]
-    public class MultipleBehavioursTest : ClientServerSetup<SyncPositionBehaviour>
+    public class MultipleBehavioursTest : ClientServerSetup<NetworkTransform3D>
     {
         private NetworkIdentity prefabWithMultiple;
         private NetworkIdentity serverObj;
@@ -76,9 +76,9 @@ namespace JamesFrowen.PositionSync.Tests.Runtime
             child1.transform.parent = prefabWithMultiple.transform;
             child2.transform.parent = prefabWithMultiple.transform;
 
-            prefabWithMultiple.gameObject.AddComponent<SyncPositionBehaviour>();
-            child1.AddComponent<SyncPositionBehaviour>();
-            child2.AddComponent<SyncPositionBehaviour>();
+            prefabWithMultiple.gameObject.AddComponent<NetworkTransform3D>();
+            child1.AddComponent<NetworkTransform3D>();
+            child2.AddComponent<NetworkTransform3D>();
 
             const int PrefabHash = 1000;
             clientObjectManager.RegisterPrefab(prefabWithMultiple, PrefabHash);
