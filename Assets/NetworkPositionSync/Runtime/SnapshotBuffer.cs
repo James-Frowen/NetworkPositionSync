@@ -29,7 +29,7 @@ using System.Text;
 using Mirage.Logging;
 using UnityEngine;
 
-namespace JamesFrowen.PositionSync
+namespace Mirage.SyncPosition
 {
     public interface ISnapshotInterpolator<T>
     {

@@ -30,7 +30,7 @@ using Mirage.Logging;
 using Mirage.Serialization;
 using UnityEngine;
 
-namespace JamesFrowen.PositionSync
+namespace Mirage.SyncPosition
 {
     /// <summary>
     /// Systems that sync <see cref="NetworkTransformBase"/>

@@ -25,7 +25,7 @@ SOFTWARE.
 using Mirage.Serialization;
 using UnityEngine;
 
-namespace JamesFrowen.PositionSync
+namespace Mirage.SyncPosition
 {
     [CreateAssetMenu(fileName = "PackSettings", menuName = "ScriptableObjects/PackSettings", order = 1)]
     public class PackSettings3D : ScriptableObject

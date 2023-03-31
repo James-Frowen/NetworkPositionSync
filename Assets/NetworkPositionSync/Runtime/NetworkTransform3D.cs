@@ -25,7 +25,7 @@ SOFTWARE.
 using Mirage.Serialization;
 using UnityEngine;
 
-namespace JamesFrowen.PositionSync
+namespace Mirage.SyncPosition
 {
     public class NetworkTransform3D : NetworkTransformBase<NetworkTransform3D.Snapshot>
     {

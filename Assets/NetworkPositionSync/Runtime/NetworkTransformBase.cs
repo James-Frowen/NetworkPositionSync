@@ -26,7 +26,7 @@ using Mirage;
 using Mirage.Serialization;
 using UnityEngine;
 
-namespace JamesFrowen.PositionSync
+namespace Mirage.SyncPosition
 {
     /// <summary>
     /// non generic base class that can be used too call functions from outside

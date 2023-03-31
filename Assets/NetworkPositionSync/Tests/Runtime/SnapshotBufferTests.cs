@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.TestTools;
 using RangeAttribute = NUnit.Framework.RangeAttribute;
 
-namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
+namespace Mirage.SyncPosition.Tests.SnapshotBufferTests
 {
     public class SnapshotBufferTestBase
     {

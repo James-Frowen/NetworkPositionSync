@@ -4,7 +4,7 @@ using Mirage;
 using Mirage.Tests;
 using UnityEngine.TestTools;
 
-namespace JamesFrowen.PositionSync.Tests.Runtime
+namespace Mirage.SyncPosition.Tests.Runtime
 {
     public class ClientServerSetup<T> : ClientServerSetupBase<T> where T : NetworkBehaviour
     {

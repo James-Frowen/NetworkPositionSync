@@ -6,7 +6,7 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 
-namespace JamesFrowen.PositionSync.Tests.Runtime
+namespace Mirage.SyncPosition.Tests.Runtime
 {
     [Category("NetworkPositionSync")]
     public class NetworkTransformSnapshotInterpolationTest : ClientServerSetup<NetworkTransform3D>

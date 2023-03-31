@@ -27,7 +27,7 @@ using Mirage;
 using Mirage.Logging;
 using UnityEngine;
 
-namespace JamesFrowen.PositionSync
+namespace Mirage.SyncPosition
 {
     /// <summary>
     /// Synchronizes time between server and client via regular messages between server and client.
