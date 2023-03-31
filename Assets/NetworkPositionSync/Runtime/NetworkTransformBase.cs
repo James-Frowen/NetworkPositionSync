@@ -22,7 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-using Mirage;
 using Mirage.Serialization;
 using UnityEngine;
 
@@ -33,10 +32,11 @@ namespace Mirage.SyncPosition
     /// </summary>
     public abstract class NetworkTransformBase : NetworkBehaviour
     {
+        public abstract void Setup();
         public abstract void WriteIfDirty(NetworkWriter writer);
         public abstract void ClientUpdate(float viewTime, float removeTime);
 
-        public static void ReadAll(PooledNetworkReader reader, float insertTime)
+        public static void ReadAll(PooledNetworkReader reader, float insertTime, bool hostMode)
         {
             // assume 1 state is atleast 3 bytes
             // (it should be more, but there shouldn't be random left over bits in reader so 3 is enough for check)
@@ -45,6 +45,10 @@ namespace Mirage.SyncPosition
             while (reader.CanReadBytes(MIN_READ_SIZE))
             {
                 var behavior = reader.ReadNetworkBehaviour<NetworkTransformBase>();
+                // if null we can't keep reading because we dont know the length
+                // this can happpen if there is a new spawned object, and then state message arrives first
+                if (behavior == null)
+                    return;
                 behavior.ReadAndInsertSnapshot(reader, insertTime);
             }
         }
@@ -65,14 +69,12 @@ namespace Mirage.SyncPosition
         /// </summary>
         protected T _snapshot;
         protected SnapshotBuffer<T> _snapshotBuffer;
+
         private void Awake()
         {
             _snapshotBuffer = new SnapshotBuffer<T>(CreateInterpolator());
-            Identity.OnStartServer.AddListener(NetworkStart);
-            Identity.OnStartClient.AddListener(NetworkStart);
         }
 
-        protected abstract void NetworkStart();
         protected abstract ISnapshotInterpolator<T> CreateInterpolator();
         protected abstract void WriteSnapshot(NetworkWriter writer);
         protected abstract T ReadSnapshot(NetworkReader reader);

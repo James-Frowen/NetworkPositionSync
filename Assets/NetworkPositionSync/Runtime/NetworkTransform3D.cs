@@ -36,7 +36,7 @@ namespace Mirage.SyncPosition
         private VarVector3Packer _positionPacker;
         private QuaternionPacker _rotationPacker;
 
-        protected override void NetworkStart()
+        public override void Setup()
         {
             _positionPacker = _packSettings.GetPositionPacker();
             _rotationPacker = _packSettings.GetRotationPacker();

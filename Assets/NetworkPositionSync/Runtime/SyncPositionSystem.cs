@@ -25,7 +25,6 @@ SOFTWARE.
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using Mirage;
 using Mirage.Logging;
 using Mirage.Serialization;
 using UnityEngine;
@@ -98,8 +97,8 @@ namespace Mirage.SyncPosition
 
         private void ServerStarted()
         {
-            _maxPacketSize = Client.SocketFactory.MaxPacketSize;
-            AddWorldEvents(Client.World);
+            _maxPacketSize = Server.SocketFactory.MaxPacketSize;
+            AddWorldEvents(Server.World);
             Server.MessageHandler.RegisterHandler<PositionMessage>(ServerHandleNetworkPositionMessage);
         }
 
@@ -129,7 +128,11 @@ namespace Mirage.SyncPosition
         {
             identity.gameObject.GetComponentsInChildren(true, _getCache);
             for (var i = 0; i < _getCache.Count; i++)
-                _behaviours.Add(_getCache[i]);
+            {
+                var behaviour = _getCache[i];
+                _behaviours.Add(behaviour);
+                behaviour.Setup();
+            }
         }
         private void World_onUnspawn(NetworkIdentity identity)
         {
@@ -334,15 +337,20 @@ namespace Mirage.SyncPosition
             if (ServerActive)
                 return;
 
-            using (var reader = NetworkReaderPool.GetReader(msg.payload, null))
+            var time = msg.time;
+            var lastTime = InterpolationTime.LatestServerTime;
+
+            if (time < lastTime)
+                // old message, drop it
+                return;
+
+            using (var reader = NetworkReaderPool.GetReader(msg.payload, Client.World))
             {
-                var time = msg.time;
+                NetworkTransformBase.ReadAll(reader, time, false);
 
-                // todo IMPORTANT ensure old message are dropped, otherwise snapshot buffer will throw
-
-                NetworkTransformBase.ReadAll(reader, time);
-
-                InterpolationTime.OnMessage(time);
+                // if equal, message was fragmented, dont uppdate time twice
+                if (time != lastTime)
+                    InterpolationTime.OnMessage(time);
             }
         }
 
@@ -351,20 +359,17 @@ namespace Mirage.SyncPosition
         /// </summary>
         internal void ServerHandleNetworkPositionMessage(INetworkPlayer _, PositionMessage msg)
         {
-            throw new NotImplementedException();
+            using (var reader = NetworkReaderPool.GetReader(msg.payload, Server.World))
+            {
+                var time = msg.time;
 
-            //using (var reader = NetworkReaderPool.GetReader(msg.payload, null))
-            //{
-            //    //float time = packer.UnpackTime(reader);
-            //    packer.UnpackNext(reader, out var id, out var pos, out var rot);
+                // todo IMPORTANT ensure old message are dropped, otherwise snapshot buffer will throw
+                // todo, handle host time stuff...
 
-            //    if (_behaviours.Lookup.TryGetValue(id, out var behaviour))
-            //        // todo fix host mode time
-            //        behaviour.ApplyOnServer(new TransformState(pos, rot), timer.Now);
-            //    else
-            //        if (logger.WarnEnabled())
-            //        logger.LogWarning($"Could not find a NetworkBehaviour with id {id}");
-            //}
+                NetworkTransformBase.ReadAll(reader, time, ClientActive);
+
+                InterpolationTime.OnMessage(time);
+            }
         }
 
 

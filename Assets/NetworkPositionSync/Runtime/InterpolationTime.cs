@@ -23,7 +23,6 @@ SOFTWARE.
 */
 
 using System.Runtime.CompilerServices;
-using Mirage;
 using Mirage.Logging;
 using UnityEngine;
 
