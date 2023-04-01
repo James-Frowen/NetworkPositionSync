@@ -44,23 +44,39 @@ namespace Mirage.SyncPosition
 
         protected override Snapshot CreateSnapshot()
         {
-            return new Snapshot(
-                useLocalSpace ? transform.localPosition : transform.position,
-                useLocalSpace ? transform.localEulerAngles.z : transform.eulerAngles.z
-            );
+            switch (_coordinatesType.Space)
+            {
+                default:
+                case Coordinates.World:
+                    return new Snapshot(transform.position, transform.eulerAngles.z);
+                case Coordinates.Local:
+                    return new Snapshot(transform.localPosition, transform.localEulerAngles.z);
+                case Coordinates.Relative:
+                    var other = _coordinatesType.RelativeTo;
+                    var relPos = other.position - transform.position;
+                    var relRot = other.eulerAngles.z - transform.eulerAngles.z;
+                    return new Snapshot(relPos, relRot);
+            }
         }
 
         protected override void ApplySnapshot(Snapshot newSnapshot)
         {
-            if (useLocalSpace)
+            switch (_coordinatesType.Space)
             {
-                transform.localPosition = newSnapshot.Position;
-                transform.localEulerAngles = Vector3.forward * newSnapshot.Rotation;
-            }
-            else
-            {
-                transform.position = newSnapshot.Position;
-                transform.eulerAngles = Vector3.forward * newSnapshot.Rotation;
+                default:
+                case Coordinates.World:
+                    transform.position = newSnapshot.Position;
+                    transform.eulerAngles = Vector3.forward * newSnapshot.Rotation;
+                    return;
+                case Coordinates.Local:
+                    transform.localPosition = newSnapshot.Position;
+                    transform.localEulerAngles = Vector3.forward * newSnapshot.Rotation;
+                    return;
+                case Coordinates.Relative:
+                    var other = _coordinatesType.RelativeTo;
+                    transform.position = (Vector2)other.position + newSnapshot.Position;
+                    transform.eulerAngles = Vector3.forward * (other.eulerAngles.z + newSnapshot.Rotation);
+                    return;
             }
         }
 

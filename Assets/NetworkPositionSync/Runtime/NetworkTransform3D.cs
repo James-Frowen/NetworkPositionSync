@@ -44,23 +44,40 @@ namespace Mirage.SyncPosition
 
         protected override Snapshot CreateSnapshot()
         {
-            return new Snapshot(
-                useLocalSpace ? transform.localPosition : transform.position,
-                useLocalSpace ? transform.localRotation : transform.rotation
-            );
+            switch (_coordinatesType.Space)
+            {
+                default:
+                case Coordinates.World:
+                    return new Snapshot(transform.position, transform.rotation);
+                case Coordinates.Local:
+                    return new Snapshot(transform.localPosition, transform.localRotation);
+                case Coordinates.Relative:
+                    var other = _coordinatesType.RelativeTo;
+                    var relPos = other.position - transform.position;
+                    // todo needs testing
+                    var relRot = Quaternion.Inverse(other.rotation) * transform.rotation;
+                    return new Snapshot(relPos, relRot);
+            }
         }
 
         protected override void ApplySnapshot(Snapshot newSnapshot)
         {
-            if (useLocalSpace)
+            switch (_coordinatesType.Space)
             {
-                transform.localPosition = newSnapshot.Position;
-                transform.localRotation = newSnapshot.Rotation;
-            }
-            else
-            {
-                transform.position = newSnapshot.Position;
-                transform.rotation = newSnapshot.Rotation;
+                default:
+                case Coordinates.World:
+                    transform.position = newSnapshot.Position;
+                    transform.rotation = newSnapshot.Rotation;
+                    return;
+                case Coordinates.Local:
+                    transform.localPosition = newSnapshot.Position;
+                    transform.localRotation = newSnapshot.Rotation;
+                    return;
+                case Coordinates.Relative:
+                    var other = _coordinatesType.RelativeTo;
+                    transform.position = other.position + newSnapshot.Position;
+                    transform.rotation = other.rotation * newSnapshot.Rotation;
+                    return;
             }
         }
 

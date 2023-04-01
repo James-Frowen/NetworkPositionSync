@@ -55,14 +55,27 @@ namespace Mirage.SyncPosition
         protected abstract void ReadAndInsertSnapshot(NetworkReader reader, float serverTime);
     }
 
+    public enum Coordinates
+    {
+        World,
+        Local,
+        Relative
+    }
+
+    [System.Serializable]
+    public struct CoordinatesType
+    {
+        public Coordinates Space;
+        public Transform RelativeTo;
+    }
+
     public abstract class NetworkTransformBase<T> : NetworkTransformBase
     {
-        [Tooltip("If true, we will use local position and rotation. If false, we use world position and rotation.")]
-        [SerializeField] protected bool useLocalSpace = true;
+        [Tooltip("Set what values to usee for position and rotation.\nworld use transform.position\nlocal uses transform.localPosition\nrelative uses (RelativeTo.position - transform.position)")]
+        [SerializeField] protected CoordinatesType _coordinatesType = new CoordinatesType { Space = Coordinates.World };
 
-        [Header("Authority")]
         [Tooltip("Set to true if moves come from owner client, set to false if moves always come from server")]
-        [SerializeField] private bool clientAuthority = false;
+        [SerializeField] private bool _clientAuthority = false;
 
         /// <summary>
         /// Current Snapshot
@@ -108,7 +121,7 @@ namespace Mirage.SyncPosition
 
         public override void ClientUpdate(float viewTime, float removeTime)
         {
-            var remoteOwner = !(clientAuthority && HasAuthority);
+            var remoteOwner = !(_clientAuthority && HasAuthority);
             // only run Interpolation for remote owner
             if (!remoteOwner)
                 return;
