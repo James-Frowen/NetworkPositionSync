@@ -147,7 +147,7 @@ namespace JamesFrowen.PositionSync
         [NonSerialized] public SyncPacker packer;
 
         [Tooltip("What channel to send messages on")]
-        public Channel MessageChannel;
+        public Mirage.Channel MessageChannel;
 
         [Header("Synchronization Settings")]
         [Tooltip("How many updates to perform per second. For best performance, set to a value below your maximum frame rate.")]
@@ -332,7 +332,7 @@ namespace JamesFrowen.PositionSync
                 {
                     payload = writer.ToArraySegment()
                 };
-                Server.SendToAll(msg, (int)MessageChannel);
+                Server.SendToAll(msg, MessageChannel);
             }
         }
 
@@ -367,7 +367,7 @@ namespace JamesFrowen.PositionSync
                     {
                         payload = writer.ToArraySegment()
                     };
-                    player.Send(msg, (int)MessageChannel);
+                    player.Send(msg, MessageChannel);
                 }
             }
 
@@ -408,7 +408,7 @@ namespace JamesFrowen.PositionSync
                     {
                         payload = writer.ToArraySegment()
                     };
-                    player.Send(msg, (int)MessageChannel);
+                    player.Send(msg, MessageChannel);
                 }
             }
 
@@ -461,7 +461,7 @@ namespace JamesFrowen.PositionSync
                 var writer = GetWriterFromPool(time, player);
 
                 var msg = new NetworkPositionMessage { payload = writer.ToArraySegment() };
-                player.Send(msg, (int)MessageChannel);
+                player.Send(msg, MessageChannel);
                 writer.Release();
             }
             writerPool.Clear();
@@ -505,7 +505,7 @@ namespace JamesFrowen.PositionSync
                 var writer = GetWriterFromPool(time, player);
 
                 var msg = new NetworkPositionMessage { payload = writer.ToArraySegment() };
-                player.Send(msg, (int)MessageChannel);
+                player.Send(msg, MessageChannel);
                 writer.Release();
             }
             writerPool.Clear();
@@ -622,13 +622,6 @@ namespace JamesFrowen.PositionSync
                 _delta = _now - _previous;
                 _previous = _now;
             }
-        }
-
-
-        public enum Channel
-        {
-            Reliable = Mirage.Channel.Reliable,
-            Unreliable = Mirage.Channel.Unreliable,
         }
     }
 

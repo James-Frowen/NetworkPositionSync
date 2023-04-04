@@ -3,14 +3,14 @@
   "displayName": "Network Position Sync",
   "description": "Network Transform using Snapshot Interpolation and other techniques to best sync position and rotation over the network",
   "version": "4.1.0",
-  "unity": "2019.4",
+  "unity": "2020.3",
   "author": "James Frowen",
   "repository": {
     "type": "git",
     "url": "https://github.com/James-Frowen/NetworkPositionSync.git"
   },
   "dependencies": {
-    "com.miragenet.mirage": "128.4.0"
+    "com.miragenet.mirage": "131.0.0"
   },
   "samples": []
 }

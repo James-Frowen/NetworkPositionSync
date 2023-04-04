@@ -385,7 +385,7 @@ namespace JamesFrowen.PositionSync
                 {
                     payload = writer.ToArraySegment()
                 };
-                Client.Send(msg, (int)_system.MessageChannel);
+                Client.Send(msg, _system.MessageChannel);
             }
         }
 
