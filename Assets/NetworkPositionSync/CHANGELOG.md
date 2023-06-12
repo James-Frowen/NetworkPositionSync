@@ -1,3 +1,10 @@
+## [5.0.1](https://github.com/James-Frowen/NetworkPositionSync/compare/v5.0.0...v5.0.1) (2023-06-12)
+
+
+### Bug Fixes
+
+* fixing null ref in SyncPositionBehaviour ([69ba59d](https://github.com/James-Frowen/NetworkPositionSync/commit/69ba59db9f2659f26ea66bb1cb3fc722a5e98fae))
+
 # [5.0.0](https://github.com/James-Frowen/NetworkPositionSync/compare/v4.1.0...v5.0.0) (2023-04-05)
 
 
