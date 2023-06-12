@@ -299,14 +299,20 @@ namespace JamesFrowen.PositionSync
         public void OnStopClient()
         {
             // dont add twice in host mode
-            if (IsServer) return;
-            _system.Behaviours.RemoveBehaviour(this);
+            if (IsServer)
+                return;
+
+            // null check incase IsServer is set to false before OnStopClient is called
+            if (_system != null)
+                _system.Behaviours.RemoveBehaviour(this);
             _system = null;
         }
 
         public void OnStopServer()
         {
-            _system.Behaviours.RemoveBehaviour(this);
+            // null check incase OnStopClient is called first
+            if (_system !=null)
+                _system.Behaviours.RemoveBehaviour(this);
             _system = null;
         }
         #endregion
