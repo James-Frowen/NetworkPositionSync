@@ -1,3 +1,15 @@
+# [6.0.0](https://github.com/James-Frowen/NetworkPositionSync/compare/v5.0.1...v6.0.0) (2023-06-13)
+
+
+### Bug Fixes
+
+* updating to mirage 141.0.2 ([48f50b9](https://github.com/James-Frowen/NetworkPositionSync/commit/48f50b9830d903ffea2dbe62ae1de7cc0ace8b92))
+
+
+### BREAKING CHANGES
+
+* now requires mirage v141.0.2
+
 ## [5.0.1](https://github.com/James-Frowen/NetworkPositionSync/compare/v5.0.0...v5.0.1) (2023-06-12)
 
 
