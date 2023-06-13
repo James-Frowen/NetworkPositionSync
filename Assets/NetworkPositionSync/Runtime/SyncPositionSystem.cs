@@ -332,7 +332,7 @@ namespace JamesFrowen.PositionSync
                 {
                     payload = writer.ToArraySegment()
                 };
-                Server.SendToAll(msg, MessageChannel);
+                Server.SendToAll(msg, excludeLocalPlayer: true, MessageChannel);
             }
         }
 
