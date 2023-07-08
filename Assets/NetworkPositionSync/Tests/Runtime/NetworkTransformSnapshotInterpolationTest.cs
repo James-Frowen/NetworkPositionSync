@@ -1,7 +1,7 @@
 using System.Collections;
 using Cysharp.Threading.Tasks;
-using Mirage;
 using Mirage.Tests;
+using Mirage.Tests.Runtime;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -11,17 +11,14 @@ namespace Mirage.SyncPosition.Tests.Runtime
     [Category("NetworkPositionSync")]
     public class NetworkTransformSnapshotInterpolationTest : ClientServerSetup<NetworkTransform3D>
     {
-        public override void ExtraSetup()
+        protected override async UniTask ExtraSetup()
         {
-            base.ExtraSetup();
+            await base.ExtraSetup();
             var serverSystem = serverGo.AddComponent<SyncPositionSystem>();
             var clientSystem = clientGo.AddComponent<SyncPositionSystem>();
 
-            serverSystem.Server = server;
-            serverSystem.Awake();
-
-            clientSystem.Client = client;
-            clientSystem.Awake();
+            serverSystem.Setup(server: server);
+            clientSystem.Setup(client: client);
         }
 
 
@@ -53,21 +50,17 @@ namespace Mirage.SyncPosition.Tests.Runtime
         private NetworkIdentity serverObj;
         private NetworkIdentity clientObj;
 
-
-        public override void ExtraSetup()
+        protected override async UniTask ExtraSetup()
         {
-            base.ExtraSetup();
+            await base.ExtraSetup();
             var serverSystem = serverGo.AddComponent<SyncPositionSystem>();
             var clientSystem = clientGo.AddComponent<SyncPositionSystem>();
 
-            serverSystem.Server = server;
-            serverSystem.Awake();
-
-            clientSystem.Client = client;
-            clientSystem.Awake();
+            serverSystem.Setup(server: server);
+            clientSystem.Setup(client: client);
         }
 
-        public override async UniTask LateSetup()
+        protected override async UniTask LateSetup()
         {
             prefabWithMultiple = CreateNetworkIdentity();
             prefabWithMultiple.gameObject.SetActive(false); // disable to stop awake being called

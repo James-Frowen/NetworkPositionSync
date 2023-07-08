@@ -1,4 +1,5 @@
 using System;
+using System.Text.RegularExpressions;
 using Mirage.Logging;
 using NUnit.Framework;
 using UnityEngine;
@@ -141,7 +142,7 @@ namespace Mirage.SyncPosition.Tests.SnapshotBufferTests
 
             using (new SetLogLevel<SnapshotBuffer<Snapshot>>(LogType.Log))
             {
-                LogAssert.Expect(LogType.Log, "First snapshot");
+                LogAssert.Expect(LogType.Log, new Regex(@"First snapshot$"));
                 var value = buffer.GetLinearInterpolation(now);
                 Assert.That(value, Is.EqualTo(state));
             }
@@ -161,7 +162,7 @@ namespace Mirage.SyncPosition.Tests.SnapshotBufferTests
 
             using (new SetLogLevel<SnapshotBuffer<Snapshot>>(LogType.Log))
             {
-                LogAssert.Expect(LogType.Log, $"No snapshots for t = {now:0.000}, using earliest t = {time1:0.000}");
+                LogAssert.Expect(LogType.Log, new Regex($"No snapshots for t = {now:0.000}, using earliest t = {time1:0.000}$"));
                 var value = buffer.GetLinearInterpolation(now);
                 Assert.That(value, Is.EqualTo(state1));
             }
@@ -181,7 +182,7 @@ namespace Mirage.SyncPosition.Tests.SnapshotBufferTests
 
             using (new SetLogLevel<SnapshotBuffer<Snapshot>>(LogType.Log))
             {
-                LogAssert.Expect(LogType.Log, $"No snapshots for t = {now:0.000}, using first t = {time1:0.000}, last t = {time2:0.000}");
+                LogAssert.Expect(LogType.Log, new Regex($"No snapshots for t = {now:0.000}, using first t = {time1:0.000}, last t = {time2:0.000}$"));
                 var value = buffer.GetLinearInterpolation(now);
                 Assert.That(value, Is.EqualTo(state2));
             }
