@@ -52,6 +52,11 @@ namespace Mirage.SyncPosition
                 this.state = state;
                 this.time = time;
             }
+
+            public override string ToString()
+            {
+                return $"({time:0.000}s:{state})";
+            }
         }
 
         private readonly List<Snapshot> buffer = new List<Snapshot>();

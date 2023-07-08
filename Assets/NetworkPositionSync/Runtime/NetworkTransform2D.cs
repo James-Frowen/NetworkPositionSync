@@ -80,7 +80,7 @@ namespace Mirage.SyncPosition
             }
         }
 
-        protected override bool HasMoved(Snapshot newSnapshot)
+        protected override bool HasChanged(Snapshot newSnapshot)
         {
             return Vector2.Distance(newSnapshot.Position, _snapshot.Position) > _positionSensitivity
                 || Mathf.Abs(Mathf.DeltaAngle(newSnapshot.Rotation, _snapshot.Rotation)) > _rotationSensitivity;

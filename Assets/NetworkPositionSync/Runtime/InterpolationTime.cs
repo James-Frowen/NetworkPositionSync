@@ -60,7 +60,8 @@ namespace Mirage.SyncPosition
     public class InterpolationTime
     {
         private static readonly ILogger logger = LogFactory.GetLogger<InterpolationTime>();
-        private bool intialized;
+
+        private bool initialized;
 
         /// <summary>
         /// The time value that the client uses to interpolate
@@ -91,7 +92,6 @@ namespace Mirage.SyncPosition
         /// If so, reset the client time.
         /// </summary>
         private readonly float _skipAheadThreshold;
-        private float _clientDelay;
 
         // Used for debug purposes. Move along...
         private float _latestServerTime;
@@ -113,27 +113,20 @@ namespace Mirage.SyncPosition
             get => _latestServerTime;
         }
 
-        [System.Obsolete("Use Time instead")]
-        public float InterpolationTimeField
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => Time;
-        }
-
         /// <summary>
         /// Current time to use for interpolation 
         /// </summary>
         public float Time
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _clientTime - _clientDelay;
+            get => _clientTime - ClientDelay;
         }
 
         public float ClientDelay
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _clientDelay;
-            set => _clientDelay = value;
+            get;
+            set;
         }
 
         // Used for debug purposes. Move along...
@@ -150,7 +143,7 @@ namespace Mirage.SyncPosition
             fastScale = normalScale + timeScale;
             slowScale = normalScale - timeScale;
 
-            _clientDelay = syncInterval * tickDelay;
+            ClientDelay = syncInterval * tickDelay;
 
             diffAvg = new ExponentialMovingAverage(movingAverageCount);
 
@@ -173,8 +166,8 @@ namespace Mirage.SyncPosition
         /// <param name="serverTime"></param>
         public void OnMessage(float serverTime)
         {
-            // only check this if we are intialized
-            if (intialized)
+            // only check this if we are initialized
+            if (initialized)
                 logger.Assert(serverTime > _latestServerTime, $"Received message out of order. Server Time: {serverTime} vs New Time: {_latestServerTime}");
 
             _latestServerTime = serverTime;
@@ -183,7 +176,7 @@ namespace Mirage.SyncPosition
             // If we're too far behind, then we should reset things too.
 
             // todo check this is correct
-            if (!intialized)
+            if (!initialized)
             {
                 InitNew(serverTime);
                 return;
@@ -215,7 +208,7 @@ namespace Mirage.SyncPosition
         public void Reset()
         {
             // mark this so first server method will call InitNew
-            intialized = false;
+            initialized = false;
             _latestServerTime = 0;
         }
 
@@ -227,7 +220,7 @@ namespace Mirage.SyncPosition
             _clientTime = serverTime;
             clientScaleTime = normalScale;
             diffAvg.Reset();
-            intialized = true;
+            initialized = true;
         }
 
         /// <summary>

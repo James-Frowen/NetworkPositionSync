@@ -81,7 +81,7 @@ namespace Mirage.SyncPosition
             }
         }
 
-        protected override bool HasMoved(Snapshot newSnapshot)
+        protected override bool HasChanged(Snapshot newSnapshot)
         {
             return Vector3.Distance(newSnapshot.Position, _snapshot.Position) > _positionSensitivity
                 || Quaternion.Angle(newSnapshot.Rotation, _snapshot.Rotation) > _rotationSensitivity;

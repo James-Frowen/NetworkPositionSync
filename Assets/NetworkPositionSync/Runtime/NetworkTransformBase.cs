@@ -95,7 +95,7 @@ namespace Mirage.SyncPosition
         /// <summary>Create a snapshot from the current Transform</summary>
         protected abstract T CreateSnapshot();
         protected abstract void ApplySnapshot(T newSnapshot);
-        protected abstract bool HasMoved(T newSnapshot);
+        protected abstract bool HasChanged(T newSnapshot);
 
         protected override void ReadAndInsertSnapshot(NetworkReader reader, float serverTime)
         {
