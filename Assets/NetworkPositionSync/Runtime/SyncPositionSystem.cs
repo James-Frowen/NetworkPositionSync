@@ -27,6 +27,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Mirage.Logging;
 using Mirage.Serialization;
+using Mirage.SocketLayer;
 using UnityEngine;
 
 namespace Mirage.SyncPosition
@@ -43,44 +44,63 @@ namespace Mirage.SyncPosition
         private static readonly ILogger logger = LogFactory.GetLogger<SyncPositionSystem>();
         private static readonly List<NetworkTransformBase> _getCache = new List<NetworkTransformBase>();
 
-        // todo add maxMessageSize (splits up update message into multiple messages if too big)
-
         public NetworkClient Client;
         public NetworkServer Server;
 
-        [Tooltip("SendToAll option skips visibility and sends position to all ready connections.")]
-        [SerializeField] private SyncMode _syncMode = SyncMode.SendToAll;
-        [SerializeField] private float _syncInterval = 0.1f;
-        [SerializeField] private SyncTiming _intervalTiming = SyncTiming.Variable;
-        [SerializeField] private float _interpolationDelay = 2.5f;
+        [SerializeField] private Settings _syncSettings = Settings.Default;
+
+        [Tooltip("Sends write size with behaviour data. This will increase bandwidth, but avoids problems when a behaviour is not found when reading.")]
+        [SerializeField] private bool _includeWriteSize = true;
+
+        private int _maxItemSize;
+
         private float _nextSyncTime;
         private int _maxPacketSize;
+        private float _previousTime;
 
-        private readonly Dictionary<INetworkPlayer, PooledNetworkWriter> _writerPool = new Dictionary<INetworkPlayer, PooledNetworkWriter>();
+        /// <summary>
+        /// class that controls sending
+        /// </summary>
+        private Send _send;
 
         private readonly List<NetworkTransformBase> _behaviours = new List<NetworkTransformBase>();
-        private readonly List<NetworkTransformBase> _clientAuthority = new List<NetworkTransformBase>();
+        private readonly List<NetworkTransformBase> _clientAuthorityBehaviours = new List<NetworkTransformBase>();
 
         public InterpolationTime InterpolationTime { [MethodImpl(MethodImplOptions.AggressiveInlining)] get; private set; }
         public bool ClientActive => Client != null && Client.Active;
         public bool ServerActive => Server != null && Server.Active;
 
-        internal void Awake()
+        private void Awake()
         {
-            InterpolationTime = new InterpolationTime(_syncInterval, tickDelay: _interpolationDelay);
+            Setup(Server, Client, _syncSettings);
+        }
+
+        /// <summary>
+        /// Method to setup System after awake is called
+        /// </summary>
+        public void Setup(NetworkServer server = null, NetworkClient client = null, Settings? settings = null)
+        {
+            if (server != null)
+                Server = server;
+            if (client != null)
+                Client = client;
+            if (settings.HasValue)
+                _syncSettings = settings.Value;
+
+            InterpolationTime = new InterpolationTime(_syncSettings.SyncInterval, tickDelay: _syncSettings.InterpolationDelay);
 
             Server?.Started.AddListener(ServerStarted);
-            Client?.Started.AddListener(ClientStarted);
-
             Server?.Stopped.AddListener(ServerStopped);
+
+            Client?.Started.AddListener(ClientStarted);
             Client?.Disconnected.AddListener(ClientStopped);
         }
 
         private void OnDestroy()
         {
             Server?.Started.RemoveListener(ServerStarted);
-            Client?.Started.RemoveListener(ClientStarted);
             Server?.Stopped.RemoveListener(ServerStopped);
+            Client?.Started.RemoveListener(ClientStarted);
             Client?.Disconnected.RemoveListener(ClientStopped);
         }
 
@@ -90,6 +110,11 @@ namespace Mirage.SyncPosition
             if (ServerActive)
                 return;
 
+            _send = new SendAll(_clientAuthorityBehaviours, _maxPacketSize, sendIfEmpty: false, _includeWriteSize, (msg) => Client.Send(msg, Channel.Unreliable));
+
+            // reset time when starting
+            _nextSyncTime = Time.unscaledTime - _syncSettings.SyncInterval;
+
             _maxPacketSize = Client.SocketFactory.MaxPacketSize;
             AddWorldEvents(Client.World);
             Client.MessageHandler.RegisterHandler<PositionMessage>(ClientHandleNetworkPositionMessage);
@@ -97,6 +122,19 @@ namespace Mirage.SyncPosition
 
         private void ServerStarted()
         {
+            switch (_syncSettings.SyncMode)
+            {
+                case SyncMode.SendToAll:
+                    _send = new SendAll(_behaviours, _maxPacketSize, sendIfEmpty: transform, _includeWriteSize, (msg) => Server.SendToAll(msg, excludeLocalPlayer: true, Channel.Unreliable));
+                    break;
+                case SyncMode.SendToObservers:
+                    _send = new SendObservers(Server, _behaviours, _maxPacketSize, _includeWriteSize);
+                    break;
+            }
+
+            // reset time when starting
+            _nextSyncTime = Time.unscaledTime - _syncSettings.SyncInterval;
+
             _maxPacketSize = Server.SocketFactory.MaxPacketSize;
             AddWorldEvents(Server.World);
             Server.MessageHandler.RegisterHandler<PositionMessage>(ServerHandleNetworkPositionMessage);
@@ -108,12 +146,14 @@ namespace Mirage.SyncPosition
             if (ServerActive)
                 return;
 
+            _send = null;
             _behaviours.Clear();
-            _clientAuthority.Clear();
+            _clientAuthorityBehaviours.Clear();
         }
 
         private void ServerStopped()
         {
+            _send = null;
             _behaviours.Clear();
         }
 
@@ -132,6 +172,7 @@ namespace Mirage.SyncPosition
                 var behaviour = _getCache[i];
                 _behaviours.Add(behaviour);
                 behaviour.Setup();
+                _maxItemSize = Math.Max(_maxItemSize, behaviour.MaxWriteSize);
             }
         }
         private void World_onUnspawn(NetworkIdentity identity)
@@ -149,7 +190,7 @@ namespace Mirage.SyncPosition
             if (hasAuthority)
             {
                 for (var i = 0; i < _getCache.Count; i++)
-                    _clientAuthority.Add(_getCache[i]);
+                    _clientAuthorityBehaviours.Add(_getCache[i]);
             }
             else
             {
@@ -163,7 +204,9 @@ namespace Mirage.SyncPosition
             if (!ClientActive)
                 return;
 
-            InterpolationTime.OnUpdate(Time.deltaTime);
+            var deltaTime = GetDeltaTime();
+
+            InterpolationTime.OnUpdate(deltaTime);
 
             var snapshotTime = InterpolationTime.Time;
             var removeTime = snapshotTime - (InterpolationTime.ClientDelay * 1.5f);
@@ -173,180 +216,44 @@ namespace Mirage.SyncPosition
             }
         }
 
+        private float GetDeltaTime()
+        {
+            var now = Time.unscaledTime;
+            var deltaTime = now - _previousTime;
+            _previousTime = now;
+            return deltaTime;
+        }
+
         private void LateUpdate()
         {
-            var now = Time.time;
+            var now = Time.unscaledTime;
+            if (logger.LogEnabled()) logger.Log($"{name} Time till Sync: {_nextSyncTime - now:0.000}" + (now > _nextSyncTime ? "  Updating" : ""));
             if (now > _nextSyncTime)
             {
-                SyncSettings.UpdateTime(_syncInterval, _intervalTiming, ref _nextSyncTime, now);
-                if (ServerActive)
-                {
-                    ServerUpdate(now);
-                }
-                else if (ClientActive) // client only
-                {
-                    OwnerUpdate(now);
-                }
+                Mirage.SyncSettings.UpdateTime(_syncSettings.SyncInterval, _syncSettings.IntervalTiming, ref _nextSyncTime, now);
+
+                _send?.Update(now, _maxItemSize);
             }
         }
 
-        internal void OwnerUpdate(float time)
-        {
-            // no owned objects, nothing to send to server
-            if (_clientAuthority.Count == 0)
-                return;
-
-            SendAllDirtyObjects(time, _clientAuthority, _maxPacketSize, (msg) => Client.Send(msg, Channel.Unreliable));
-        }
-
-        /// <summary>
-        /// shared method for server and owner udpates
-        /// </summary>
-        /// <param name=""></param>
-        /// <param name="send"></param>
-        private static void SendAllDirtyObjects(float time, List<NetworkTransformBase> behaviours, int maxPacketSize, Action<PositionMessage> send)
-        {
-            using (var writer = NetworkWriterPool.GetWriter())
-            {
-                var msg = new PositionMessage
-                {
-                    time = time,
-                };
-
-                var hasSent = false;
-                foreach (var behaviour in behaviours)
-                {
-                    behaviour.WriteIfDirty(writer);
-
-                    // send if full
-                    if (writer.ByteLength + PositionMessage.FRAGMENT_SPLIT_LIMIT > maxPacketSize)
-                    {
-                        msg.payload = writer.ToArraySegment();
-                        send.Invoke(msg);
-                        writer.Reset();
-                        hasSent = true;
-                    }
-                }
-
-                // small chance that we send msg above at max size, and then get here with empty writer.
-                // if empty, but has already send full payload previously
-                if (hasSent && writer.ByteLength == 0)
-                    return;
-
-                // send even if empty, we always want too tell client the time
-                msg.payload = writer.ToArraySegment();
-                send.Invoke(msg);
-            }
-        }
-
-        private void ServerUpdate(float time)
-        {
-            // syncs every frame, each Behaviour will track its own timer
-            switch (_syncMode)
-            {
-                case SyncMode.SendToAll:
-                    SendToAll(time);
-                    break;
-                case SyncMode.SendToObservers:
-                    SendToObservers(time);
-                    break;
-            }
-        }
-
-        private void SendToAll(float time)
-        {
-            SendAllDirtyObjects(time, _behaviours, _maxPacketSize, (msg) => Server.SendToAll(msg, Channel.Unreliable));
-        }
-
-        /// <summary>
-        /// Loops through all dirty objects, and then their observers and then writes that behaviouir to a cahced writer
-        /// <para>But Packs once and copies bytes</para>
-        /// </summary>
-        /// <param name="time"></param>
-        private void SendToObservers(float time)
-        {
-            var msg = new PositionMessage
-            {
-                time = time,
-            };
-
-            var hostPlayer = Server.LocalPlayer;
-
-            using (var packWriter = NetworkWriterPool.GetWriter())
-            {
-                foreach (var behaviour in _behaviours)
-                {
-                    // no observers, dont need to check if we should write
-                    if (behaviour.Identity.observers.Count == 0)
-                        continue;
-
-                    // pack behaviour into writer
-                    packWriter.Reset();
-                    behaviour.WriteIfDirty(packWriter);
-
-                    // copy from writer into buffers for each observers
-                    foreach (var observer in behaviour.Identity.observers)
-                    {
-                        // we never need to send from server to host player
-                        if (observer == hostPlayer)
-                            continue;
-
-                        // get or create
-                        if (!_writerPool.TryGetValue(observer, out var writer))
-                        {
-                            writer = NetworkWriterPool.GetWriter();
-                            _writerPool[observer] = writer;
-                        }
-
-                        writer.CopyFromWriter(packWriter);
-                        // send to this player if full
-                        if (writer.ByteLength + PositionMessage.FRAGMENT_SPLIT_LIMIT > _maxPacketSize)
-                        {
-                            msg.payload = writer.ToArraySegment();
-                            observer.Send(msg, Channel.Unreliable);
-                            writer.Reset();
-                        }
-                    }
-                }
-            }
-
-
-            foreach (var player in Server.Players)
-            {
-                // if no writer, then no objects were written to this player
-                if (_writerPool.TryGetValue(player, out var writer))
-                    msg.payload = writer.ToArraySegment();
-
-                // send even if no payload, player still needs time
-                player.Send(msg, Channel.Unreliable);
-
-                // release and remove writer
-                writer?.Release();
-                _writerPool.Remove(player);
-            }
-            // release any extra writers,
-            // there should be none, but it would be leak if we dont check
-            foreach (var writer in _writerPool.Values)
-                writer.Release();
-            _writerPool.Clear();
-        }
 
         private void ClientHandleNetworkPositionMessage(PositionMessage msg)
         {
             // hostMode
             if (ServerActive)
-                return;
+                throw new InvalidOperationException("Server should not be sending message to host");
 
-            var time = msg.time;
+            var time = msg.Time;
             var lastTime = InterpolationTime.LatestServerTime;
 
             if (time < lastTime)
                 // old message, drop it
                 return;
 
-            using (var reader = NetworkReaderPool.GetReader(msg.payload, Client.World))
+            using (PooledNetworkReader metaReader = NetworkReaderPool.GetReader(msg.MetaPayload, Client.World),
+                                       dataReader = NetworkReaderPool.GetReader(msg.DataPayload, Client.World))
             {
-                NetworkTransformBase.ReadAll(reader, time, false);
+                NetworkTransformBase.ReadAll(time, metaReader, dataReader, _includeWriteSize);
 
                 // if equal, message was fragmented, dont uppdate time twice
                 if (time != lastTime)
@@ -359,19 +266,43 @@ namespace Mirage.SyncPosition
         /// </summary>
         internal void ServerHandleNetworkPositionMessage(INetworkPlayer _, PositionMessage msg)
         {
-            using (var reader = NetworkReaderPool.GetReader(msg.payload, Server.World))
+            using (PooledNetworkReader metaReader = NetworkReaderPool.GetReader(msg.MetaPayload, Client.World),
+                                       dataReader = NetworkReaderPool.GetReader(msg.DataPayload, Client.World))
             {
-                var time = msg.time;
+                var time = msg.Time;
 
                 // todo IMPORTANT ensure old message are dropped, otherwise snapshot buffer will throw
                 // todo, handle host time stuff...
 
-                NetworkTransformBase.ReadAll(reader, time, ClientActive);
+                NetworkTransformBase.ReadAll(time, metaReader, dataReader, _includeWriteSize);
 
-                InterpolationTime.OnMessage(time);
+                // there might be multiple clients so dont update local time onmessage time here, should only run on host anyway
+                //InterpolationTime.OnMessage(time);
             }
         }
 
+        [Serializable]
+        public struct Settings
+        {
+            [Tooltip("SendToAll option skips visibility and sends position to all ready connections.")]
+            public SyncMode SyncMode;
+
+            [Tooltip("How often server sends updates, or client if client had authority.\nNote: this shoulld be set even if IntervalTiming is NoInterval, because Delay is a multiple of this interval")]
+            public float SyncInterval;
+            [Tooltip("How SyncInterval is used")]
+            public SyncTiming IntervalTiming;
+
+            [Tooltip("Delay client will use so that it always has snapshots. Multiple of 1/SyncInterval")]
+            public float InterpolationDelay;
+
+            public static Settings Default => new Settings
+            {
+                SyncMode = SyncMode.SendToAll,
+                SyncInterval = 0.1f,
+                IntervalTiming = SyncTiming.Variable,
+                InterpolationDelay = 2.5f
+            };
+        }
 
         [Serializable]
         public enum SyncMode
@@ -380,17 +311,298 @@ namespace Mirage.SyncPosition
             SendToObservers,
         }
 
+        /// <summary>
+        /// Note object metaData, and movement data are written to seperate writers.
+        /// This is so that we can write the size of the data to meta after data has been written
+        /// We need 2 writers for this, otherwise we will have to write a placeholder, and then go back and fill in in after, Which will take up more space because we can't compress size if we dont know what it is
+        /// </summary>
         [NetworkMessage]
         public struct PositionMessage
         {
             /// <summary>
             /// how close to MTU we can get before sending 2 message instead of 1
             /// </summary>
-            // Header (msgId,time,payload) + max size of 1 behaviour (worse case)
-            public const int FRAGMENT_SPLIT_LIMIT = 10 + 12 + 16;
+            // msgId,time,payload sizes
+            public const int HEADER_SIZE = 2 + 4 + (2 * 2);
 
-            public float time;
-            public ArraySegment<byte> payload;
+            public float Time;
+
+            /// <summary>
+            /// Header values for each object. Their Netid, compIndex, write size (optional)
+            /// </summary>
+            public ArraySegment<byte> MetaPayload;
+            /// <summary>
+            /// Data for each object. the 2 payloads should be read a long side each other
+            /// </summary>
+            public ArraySegment<byte> DataPayload;
+        }
+
+        private abstract class Send
+        {
+            private readonly int _maxPacketSize;
+
+            protected Send(int maxPacketSize)
+            {
+                _maxPacketSize = maxPacketSize;
+            }
+
+            protected bool IsFull(int maxItemSize, NetworkWriter metaWriter, NetworkWriter dataWriter)
+            {
+                var current = metaWriter.ByteLength + dataWriter.ByteLength + PositionMessage.HEADER_SIZE;
+                // size of netid + compIndex + data length
+                const int maxMetaSize = 4 + 1 + 2;
+                var next = current + maxMetaSize + maxItemSize;
+
+                return next > _maxPacketSize;
+            }
+
+            /// <summary>
+            /// Checks for changes and send messages
+            /// </summary>
+            public abstract void Update(float time, int maxItemSize);
+        }
+
+        private class SendAll : Send
+        {
+            private readonly List<NetworkTransformBase> _behaviours;
+            private readonly bool _sendIfEmpty;
+            private readonly Action<PositionMessage> _send;
+            private readonly bool _includeWriteSize;
+
+            public SendAll(List<NetworkTransformBase> behaviours, int maxPacketSize, bool sendIfEmpty, bool includeWriteSize, Action<PositionMessage> send)
+                : base(maxPacketSize)
+            {
+                _behaviours = behaviours;
+                _sendIfEmpty = sendIfEmpty;
+                _send = send;
+                _includeWriteSize = includeWriteSize;
+            }
+
+            /// <summary>
+            /// shared method for server and owner updates
+            /// </summary>
+            /// <param name=""></param>
+            /// <param name="send"></param>
+            public override void Update(float time, int maxItemSize)
+            {
+                if (_behaviours.Count == 0)
+                    return;
+
+                using (PooledNetworkWriter metaWriter = NetworkWriterPool.GetWriter(), dataWriter = NetworkWriterPool.GetWriter())
+                {
+                    var msg = new PositionMessage
+                    {
+                        Time = time,
+                    };
+
+                    var hasSent = false;
+                    foreach (var behaviour in _behaviours)
+                    {
+                        behaviour.WriteIfDirty(metaWriter, dataWriter, _includeWriteSize);
+
+                        // send if full
+                        if (IsFull(maxItemSize, metaWriter, dataWriter))
+                        {
+                            hasSent = true;
+
+                            Send(metaWriter, dataWriter, msg);
+
+                            metaWriter.Reset();
+                            dataWriter.Reset();
+                        }
+                    }
+
+                    var empty = metaWriter.ByteLength == 0;
+                    // small chance that we send msg above at max size, and then get here with empty writer.
+                    // if empty, but has already send full payload previously
+                    if (hasSent && empty)
+                        return;
+
+                    // if empty, then dont send if sendIfEmpty is false
+                    if (empty && !_sendIfEmpty)
+                        return;
+
+                    // send even if empty, we always want too tell client the time
+                    Send(metaWriter, dataWriter, msg);
+                }
+            }
+
+            private void Send(PooledNetworkWriter metaWriter, PooledNetworkWriter dataWriter, PositionMessage msg)
+            {
+                msg.MetaPayload = metaWriter.ToArraySegment();
+                msg.DataPayload = dataWriter.ToArraySegment();
+                _send.Invoke(msg);
+            }
+        }
+
+        private class SendObservers : Send
+        {
+            private readonly NetworkServer _server;
+            private readonly List<NetworkTransformBase> _behaviours;
+            private readonly bool _includeWriteSize;
+
+            private readonly Dictionary<INetworkPlayer, WriteState> _observerState = new Dictionary<INetworkPlayer, WriteState>();
+            private readonly Pool<WriteState> _pool = new Pool<WriteState>((p) => new WriteState(p), 1, 500);
+
+            public SendObservers(NetworkServer server, List<NetworkTransformBase> behaviours, int maxPacketSize, bool includeWriteSize)
+                : base(maxPacketSize)
+            {
+                _server = server;
+                _behaviours = behaviours;
+                _includeWriteSize = includeWriteSize;
+            }
+
+            /// <summary>
+            /// Loops through all dirty objects, and then their observers and then writes that behaviouir to a cahced writer
+            /// <para>But Packs once and copies bytes</para>
+            /// </summary>
+            /// <param name="time"></param>
+            public override void Update(float time, int maxItemSize)
+            {
+                WriteAllBehaviours(time, maxItemSize);
+
+                // send any data left in buffers, or empty message if none was sent
+                FlushBuffers(time);
+
+                ReleaseWriters();
+            }
+
+            private void WriteAllBehaviours(float time, int maxItemSize)
+            {
+                using (PooledNetworkWriter packMetaWriter = NetworkWriterPool.GetWriter(), packDataWriter = NetworkWriterPool.GetWriter())
+                {
+                    var hostPlayer = _server.LocalPlayer;
+                    foreach (var behaviour in _behaviours)
+                    {
+                        // no observers, dont need to check if we should write
+                        var observers = behaviour.Identity.observers;
+                        var count = observers.Count;
+                        if (count == 0)
+                            continue;
+
+                        // if only observer is host player, then skip
+                        if (count == 1 && observers.Contains(hostPlayer))
+                            continue;
+
+                        // pack behaviour into writer
+                        packMetaWriter.Reset();
+                        packDataWriter.Reset();
+                        behaviour.WriteIfDirty(packMetaWriter, packDataWriter, _includeWriteSize);
+
+                        // copy from writer into buffers for each observers
+                        foreach (var observer in observers)
+                        {
+                            // we never need to send from server to host player
+                            if (observer == hostPlayer)
+                                continue;
+
+                            // get or create
+                            if (!_observerState.TryGetValue(observer, out var state))
+                            {
+                                state = _pool.Take();
+                                _observerState[observer] = state;
+                            }
+
+                            state.Meta.CopyFromWriter(packMetaWriter);
+                            state.Data.CopyFromWriter(packDataWriter);
+
+                            if (IsFull(maxItemSize, state.Meta, state.Data))
+                            {
+                                state.Send(observer, time);
+
+                            }
+                        }
+                    }
+                }
+            }
+
+            private void FlushBuffers(float time)
+            {
+                var hostPlayer = _server.LocalPlayer;
+                foreach (var player in _server.Players)
+                {
+                    // dont send to host player
+                    if (player == hostPlayer)
+                        continue;
+
+                    if (_observerState.TryGetValue(player, out var state))
+                    {
+                        state.Send(player, time);
+                    }
+                    else
+                    {
+                        // no data to send to this player, but we still need to send time
+                        // player sitll needs time
+                        var msg = new PositionMessage
+                        {
+                            Time = time,
+                            MetaPayload = default,
+                            DataPayload = default,
+                        };
+
+                        player.Send(msg, Channel.Unreliable);
+                    }
+                }
+            }
+
+            private void ReleaseWriters()
+            {
+                // release any extra writers,
+                // there should be none, but it would be leak if we dont check
+                foreach (var state in _observerState.Values)
+                    state.Release();
+                _observerState.Clear();
+            }
+
+
+            private class WriteState
+            {
+                public readonly NetworkWriter Meta;
+                public readonly NetworkWriter Data;
+                private readonly Pool<WriteState> _pool;
+                public bool HasSent;
+
+                public WriteState(Pool<WriteState> pool)
+                {
+                    Meta = new NetworkWriter(NetworkWriterPool.BufferSize.Value);
+                    Data = new NetworkWriter(NetworkWriterPool.BufferSize.Value);
+                    _pool = pool;
+                }
+
+                public void Release()
+                {
+                    _pool.Put(this);
+                }
+
+                /// <summary>
+                /// sends if not empty
+                /// </summary>
+                /// <param name="player"></param>
+                /// <param name="time"></param>
+                public void Flush(INetworkPlayer player, float time)
+                {
+                    // if not sent yet, or has new data
+                    if (!HasSent || Meta.BitPosition > 0)
+                    {
+                        Send(player, time);
+                    }
+                }
+
+                public void Send(INetworkPlayer player, float time)
+                {
+                    var msg = new PositionMessage
+                    {
+                        Time = time,
+                        MetaPayload = Meta.ToArraySegment(),
+                        DataPayload = Data.ToArraySegment()
+                    };
+
+                    player.Send(msg, Channel.Unreliable);
+                    Meta.Reset();
+                    Data.Reset();
+                    HasSent = true;
+                }
+            }
         }
     }
 }

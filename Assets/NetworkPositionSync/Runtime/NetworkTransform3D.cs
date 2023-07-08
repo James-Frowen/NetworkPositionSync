@@ -33,6 +33,10 @@ namespace Mirage.SyncPosition
         [SerializeField] private float _positionSensitivity = 0.01f;
         [SerializeField] private float _rotationSensitivity = 0.01f;
 
+        // todo calculate actual maxSize from pack settings
+        //      it is fine to overestimate for now
+        public override int MaxWriteSize => 4 * 7; // snapshot is 7 floats
+
         private VarVector3Packer _positionPacker;
         private QuaternionPacker _rotationPacker;
 
