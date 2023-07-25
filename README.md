@@ -6,7 +6,8 @@ Network Transform using Snapshot Interpolation and other techniques to best sync
 
 ### Package Manager
 
-use package manager to get versions easily, or replace `#vv6.0.0` with the tag, branch or full hash of the commit.
+use package manager to get versions easily, or replace `#v6.0.0` with the tag, branch or full hash of the commit.
+
 
 IMPORTANT: update `v6.0.0` with latest version on release page
 ```json
