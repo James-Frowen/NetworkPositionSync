@@ -1,4 +1,4 @@
-﻿using Mirage.SocketLayer;
+using Mirage.SocketLayer;
 using UnityEngine;
 
 namespace Mirage.Tests
@@ -24,7 +24,7 @@ namespace Mirage.Tests
             client.SocketFactory = socketFactory;
 
             clientObjectManager = go.GetComponent<ClientObjectManager>();
-            clientObjectManager.Client = client;
+            client.ObjectManager = clientObjectManager;
         }
 
         public void SetupCharacter()

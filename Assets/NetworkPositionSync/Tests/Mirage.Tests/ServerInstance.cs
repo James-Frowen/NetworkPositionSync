@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using Mirage.SocketLayer;
 using UnityEngine;
 
@@ -32,7 +32,7 @@ namespace Mirage.Tests
             server.SocketFactory = socketFactory;
 
             serverObjectManager = go.GetComponent<ServerObjectManager>();
-            serverObjectManager.Server = server;
+            server.ObjectManager = serverObjectManager;
         }
 
         public void SpawnPlayerForFirstClient(GameObject prefab)

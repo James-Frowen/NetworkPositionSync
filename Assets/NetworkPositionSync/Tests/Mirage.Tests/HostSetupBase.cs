@@ -55,8 +55,8 @@ namespace Mirage.Tests
             if (ServerConfig != null) server.PeerConfig = ServerConfig;
             if (ClientConfig != null) client.PeerConfig = ClientConfig;
 
-            serverObjectManager.Server = server;
-            clientObjectManager.Client = client;
+            server.ObjectManager = serverObjectManager;
+            client.ObjectManager = clientObjectManager;
 
             ExtraSetup();
 
