@@ -8,7 +8,7 @@
       "url": "https://package.openupm.com"
     },
     "com.miragenet.mirage": {
-      "version": "131.0.0",
+      "version": "141.0.2",
       "depth": 0,
       "source": "registry",
       "dependencies": {

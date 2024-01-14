@@ -10,7 +10,7 @@
     "url": "https://github.com/James-Frowen/NetworkPositionSync.git"
   },
   "dependencies": {
-    "com.miragenet.mirage": "131.0.0"
+    "com.miragenet.mirage": "141.0.2"
   },
   "samples": []
 }
