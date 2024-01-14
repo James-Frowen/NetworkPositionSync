@@ -168,6 +168,11 @@ namespace JamesFrowen.PositionSync
             _clientTime += deltaTime * clientScaleTime;
         }
 
+        public bool IsMessageOutOfOrder(float newServerTime)
+        {
+            return newServerTime < _latestServerTime;
+        }
+
         /// <summary>
         /// Updates <see cref="clientScaleTime"/> to keep <see cref="ClientTime"/> in line with <see cref="LatestServerTime"/>
         /// </summary>

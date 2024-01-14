@@ -557,6 +557,13 @@ namespace JamesFrowen.PositionSync
             {
                 var time = packer.UnpackTime(reader);
 
+                if (TimeSync.IsMessageOutOfOrder(time))
+                {
+                    if (logger.LogEnabled()) logger.Log($"Ignoring packet before it was received out of order");
+                    // we dont want old packetes, we only care about most recent data so client can lerp towards it
+                    return;
+                }
+
                 while (packer.TryUnpackNext(reader, out var id, out var pos, out var rot))
                 {
                     if (Behaviours.Dictionary.TryGetValue(id, out var behaviour))
