@@ -1,3 +1,11 @@
+## [6.0.1](https://github.com/James-Frowen/NetworkPositionSync/compare/v6.0.0...v6.0.1) (2024-01-14)
+
+
+### Bug Fixes
+
+* adding check for time out of order ([4f01483](https://github.com/James-Frowen/NetworkPositionSync/commit/4f01483b239cdee0c4f13678a2c0269382490c21))
+* fixing mirage version in package ([17dcb0c](https://github.com/James-Frowen/NetworkPositionSync/commit/17dcb0cab63c5f72a847675addc06809eb87f59e))
+
 # [6.0.0](https://github.com/James-Frowen/NetworkPositionSync/compare/v5.0.1...v6.0.0) (2023-06-13)
 
 
