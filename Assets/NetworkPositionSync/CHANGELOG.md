@@ -1,3 +1,10 @@
+## [6.0.2](https://github.com/James-Frowen/NetworkPositionSync/compare/v6.0.1...v6.0.2) (2024-02-08)
+
+
+### Bug Fixes
+
+* improving time scaling ([b073950](https://github.com/James-Frowen/NetworkPositionSync/commit/b0739501063c08288e9a8745df23d531a6271780))
+
 ## [6.0.1](https://github.com/James-Frowen/NetworkPositionSync/compare/v6.0.0...v6.0.1) (2024-01-14)
 
 
