@@ -2,7 +2,7 @@
   "name": "com.james-frowen.position-sync",
   "displayName": "Network Position Sync",
   "description": "Network Transform using Snapshot Interpolation and other techniques to best sync position and rotation over the network",
-  "version": "6.0.3",
+  "version": "6.0.4",
   "unity": "2020.3",
   "author": "James Frowen",
   "repository": {

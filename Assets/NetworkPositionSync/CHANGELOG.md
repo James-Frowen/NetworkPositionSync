@@ -1,3 +1,10 @@
+## [6.0.4](https://github.com/James-Frowen/NetworkPositionSync/compare/v6.0.3...v6.0.4) (2024-02-08)
+
+
+### Bug Fixes
+
+* fixing compile error ([1d20015](https://github.com/James-Frowen/NetworkPositionSync/commit/1d2001579ff80407f48f0dd545c2540e57a7718b))
+
 ## [6.0.3](https://github.com/James-Frowen/NetworkPositionSync/compare/v6.0.2...v6.0.3) (2024-02-08)
 
 
