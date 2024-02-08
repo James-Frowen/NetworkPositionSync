@@ -234,7 +234,7 @@ namespace JamesFrowen.PositionSync
         private void InitNew(float serverTime)
         {
             _clientTime = serverTime;
-            clientScaleTime = normalScale;
+            clientScaleTime = 1;
             diffAvg.Reset();
             initialized = true;
         }
