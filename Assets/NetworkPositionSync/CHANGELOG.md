@@ -1,3 +1,10 @@
+## [6.0.3](https://github.com/James-Frowen/NetworkPositionSync/compare/v6.0.2...v6.0.3) (2024-02-08)
+
+
+### Bug Fixes
+
+* improving default timescale value and adding value to inspector ([35aae3e](https://github.com/James-Frowen/NetworkPositionSync/commit/35aae3e1e18fc4bab92068c5c5ae4d1bc059082a))
+
 ## [6.0.2](https://github.com/James-Frowen/NetworkPositionSync/compare/v6.0.1...v6.0.2) (2024-02-08)
 
 
