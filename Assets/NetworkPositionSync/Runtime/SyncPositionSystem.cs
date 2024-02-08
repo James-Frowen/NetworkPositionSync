@@ -160,7 +160,10 @@ namespace JamesFrowen.PositionSync
         [Header("Snapshot Interpolation")]
         [Tooltip("Number of ticks to delay interpolation to make sure there is always a snapshot to interpolate towards. High delay can handle more jitter, but adds latancy to the position.")]
         public float TickDelayCount = 2;
-
+        
+        [Tooltip("How much to modify the timescale of interpolation clock when ahead or behind the server")]
+        public float TimeScaleModifier = 0.01f;
+        
         [Tooltip("SendToAll option skips visibility and sends position to all ready connections.")]
         public SyncMode syncMode = SyncMode.SendToAll;
 
@@ -182,7 +185,7 @@ namespace JamesFrowen.PositionSync
 
         internal void Awake()
         {
-            _timeSync = new InterpolationTime(1 / SyncRate, tickDelay: TickDelayCount, timeScale: 0.1f);
+            _timeSync = new InterpolationTime(1 / SyncRate, tickDelay: TickDelayCount, timeScale: TimeScaleModifier);
             packer = new SyncPacker(PackSettings);
             Behaviours = new SyncPositionBehaviourCollection(PackSettings);
 
