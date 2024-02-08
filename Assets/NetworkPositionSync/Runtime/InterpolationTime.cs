@@ -158,7 +158,7 @@ namespace JamesFrowen.PositionSync
             diffAvg = new ExponentialMovingAverage(movingAverageCount);
 
             // Client should always start at normal time scale.
-            clientScaleTime = normalScale;
+            clientScaleTime = 1f;
         }
 
         /// <summary>
