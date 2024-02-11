@@ -1,3 +1,13 @@
+# [7.0.0](https://github.com/James-Frowen/NetworkPositionSync/compare/v6.0.5...v7.0.0) (2024-02-11)
+
+
+* fix!: changing time to be double ([e632c85](https://github.com/James-Frowen/NetworkPositionSync/commit/e632c85137af3374fe62987bf53ef3a171d34cb8))
+
+
+### BREAKING CHANGES
+
+* time fields are now double instead of float
+
 ## [6.0.5](https://github.com/James-Frowen/NetworkPositionSync/compare/v6.0.4...v6.0.5) (2024-02-08)
 
 
