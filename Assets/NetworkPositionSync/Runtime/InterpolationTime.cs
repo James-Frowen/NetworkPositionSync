@@ -66,7 +66,7 @@ namespace JamesFrowen.PositionSync
         /// <summary>
         /// The time value that the client uses to interpolate
         /// </summary>
-        private float _clientTime;
+        private double _clientTime;
 
         /// <summary>
         /// The client will multiply deltaTime by this scale time value each frame
@@ -97,12 +97,12 @@ namespace JamesFrowen.PositionSync
         private float _clientDelay;
 
         // Used for debug purposes. Move along...
-        private float _latestServerTime;
+        private double _latestServerTime;
 
         /// <summary>
         /// Timer that follows server time
         /// </summary>
-        public float ClientTime
+        public double ClientTime
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _clientTime;
@@ -110,14 +110,14 @@ namespace JamesFrowen.PositionSync
         /// <summary>
         /// Returns the last time received by the server
         /// </summary>
-        public float LatestServerTime
+        public double LatestServerTime
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _latestServerTime;
         }
 
         [System.Obsolete("Use Time instead")]
-        public float InterpolationTimeField
+        public double InterpolationTimeField
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => Time;
@@ -126,7 +126,7 @@ namespace JamesFrowen.PositionSync
         /// <summary>
         /// Current time to use for interpolation 
         /// </summary>
-        public float Time
+        public double Time
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _clientTime - _clientDelay;
@@ -170,7 +170,7 @@ namespace JamesFrowen.PositionSync
             _clientTime += deltaTime * clientScaleTime;
         }
 
-        public bool IsMessageOutOfOrder(float newServerTime)
+        public bool IsMessageOutOfOrder(double newServerTime)
         {
             return newServerTime < _latestServerTime;
         }
@@ -179,7 +179,7 @@ namespace JamesFrowen.PositionSync
         /// Updates <see cref="clientScaleTime"/> to keep <see cref="ClientTime"/> in line with <see cref="LatestServerTime"/>
         /// </summary>
         /// <param name="serverTime"></param>
-        public void OnMessage(float serverTime)
+        public void OnMessage(double serverTime)
         {
             // only check this if we are initialized
             if (initialized)
@@ -231,7 +231,7 @@ namespace JamesFrowen.PositionSync
         /// <summary>
         /// Initializes and resets the system.
         /// </summary>
-        private void InitNew(float serverTime)
+        private void InitNew(double serverTime)
         {
             _clientTime = serverTime;
             clientScaleTime = 1;
@@ -261,7 +261,7 @@ namespace JamesFrowen.PositionSync
             else if (diff < negativeThreshold) // Server is falling behind us, we need to slow down.
                 // *2 here because we want to slow down faster, 
                 // if we dont there wont be any new snapshots to interpolate towards and game will be jittery
-                return 1 - _scaleModifier * 4; 
+                return 1 - (_scaleModifier * 4);
 
             else // Server and client are on par ("close enough"). Run at normal speed.
                 return 1;

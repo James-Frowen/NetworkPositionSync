@@ -160,10 +160,10 @@ namespace JamesFrowen.PositionSync
         [Header("Snapshot Interpolation")]
         [Tooltip("Number of ticks to delay interpolation to make sure there is always a snapshot to interpolate towards. High delay can handle more jitter, but adds latancy to the position.")]
         public float TickDelayCount = 2;
-        
+
         [Tooltip("How much to modify the timescale of interpolation clock when ahead or behind the server")]
         public float TimeScaleModifier = 0.01f;
-        
+
         [Tooltip("SendToAll option skips visibility and sends position to all ready connections.")]
         public SyncMode syncMode = SyncMode.SendToAll;
 
@@ -270,7 +270,7 @@ namespace JamesFrowen.PositionSync
             ClientUpdate(timer.Delta);
         }
 
-        private void ServerUpdate(float time)
+        private void ServerUpdate(double time)
         {
             if (!ServerActive) return;
 
@@ -309,7 +309,7 @@ namespace JamesFrowen.PositionSync
             TimeSync.OnUpdate(deltaTime);
         }
 
-        internal void SendUpdateToAll(float time)
+        internal void SendUpdateToAll(double time)
         {
             // dont send message if no behaviours
             if (Behaviours.Dictionary.Count == 0)
@@ -343,7 +343,7 @@ namespace JamesFrowen.PositionSync
         /// Loops through all players, followed by all dirty objects and checks if the player object can see each one
         /// </summary>
         /// <param name="time"></param>
-        internal void SendUpdateToObservers_PlayerDirty(float time)
+        internal void SendUpdateToObservers_PlayerDirty(double time)
         {
             // dont send message if no behaviours
             if (Behaviours.Dictionary.Count == 0)
@@ -382,7 +382,7 @@ namespace JamesFrowen.PositionSync
         /// ...except this one packs data once.
         /// </summary>
         /// <param name="time"></param>
-        internal void SendUpdateToObservers_PlayerDirty_PackOnce(float time)
+        internal void SendUpdateToObservers_PlayerDirty_PackOnce(double time)
         {
             // dont send message if no behaviours
             if (Behaviours.Dictionary.Count == 0)
@@ -441,7 +441,7 @@ namespace JamesFrowen.PositionSync
         /// Loops through all dirty objects, and then their observers and then writes that behaviouir to a cahced writer
         /// </summary>
         /// <param name="time"></param>
-        internal void SendUpdateToObservers_DirtyObservers(float time)
+        internal void SendUpdateToObservers_DirtyObservers(double time)
         {
             // dont send message if no behaviours
             if (Behaviours.Dictionary.Count == 0)
@@ -477,7 +477,7 @@ namespace JamesFrowen.PositionSync
         /// <para>But Packs once and copies bytes</para>
         /// </summary>
         /// <param name="time"></param>
-        internal void SendUpdateToObservers_DirtyObservers_PackOnce(float time)
+        internal void SendUpdateToObservers_DirtyObservers_PackOnce(double time)
         {
             // dont send message if no behaviours
             if (Behaviours.Dictionary.Count == 0)
@@ -518,7 +518,7 @@ namespace JamesFrowen.PositionSync
 
         private Dictionary<INetworkPlayer, PooledNetworkWriter> writerPool = new Dictionary<INetworkPlayer, PooledNetworkWriter>();
 
-        private PooledNetworkWriter GetWriterFromPool(float time, INetworkPlayer player)
+        private PooledNetworkWriter GetWriterFromPool(double time, INetworkPlayer player)
         {
             if (!writerPool.TryGetValue(player, out var writer))
             {
@@ -606,30 +606,30 @@ namespace JamesFrowen.PositionSync
         public class Timer
         {
             private readonly Stopwatch stopwatch = Stopwatch.StartNew();
-            private float _previous;
+            private double _previous;
             private float _delta;
-            private float _now;
+            private double _now;
 
             public float Delta
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get => _delta;
             }
-            public float Now
+            public double Now
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get => _now;
             }
 
-            private float GetNow()
+            private double GetNow()
             {
-                return (float)(stopwatch.Elapsed.TotalMilliseconds / 1000f);
+                return (double)(stopwatch.Elapsed.TotalMilliseconds / 1000.0);
             }
 
             public void Update()
             {
                 _now = GetNow();
-                _delta = _now - _previous;
+                _delta = (float)(_now - _previous);
                 _previous = _now;
             }
         }

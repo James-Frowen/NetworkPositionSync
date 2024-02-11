@@ -26,6 +26,7 @@ using System;
 using Mirage;
 using Mirage.Serialization;
 using UnityEngine;
+using static JamesFrowen.PositionSync.SyncPacker;
 
 namespace JamesFrowen.PositionSync
 {
@@ -55,9 +56,9 @@ namespace JamesFrowen.PositionSync
         public int bitCount = 10;
 
         // Data Packers.
-        public VarFloatPacker CreateTimePacker()
+        public VarDoublePacker CreateTimePacker()
         {
-            return new VarFloatPacker(timePrecision, blockSize);
+            return new VarDoublePacker(timePrecision, blockSize);
         }
         public VarVector3Packer CreatePositionPacker()
         {
@@ -72,7 +73,7 @@ namespace JamesFrowen.PositionSync
     public class SyncPacker
     {
         // packers
-        private readonly VarFloatPacker timePacker;
+        private readonly VarDoublePacker timePacker;
         private readonly VarVector3Packer positionPacker;
         private readonly QuaternionPacker rotationPacker;
         private readonly int blockSize;
@@ -87,7 +88,7 @@ namespace JamesFrowen.PositionSync
             includeCompId = settings.IncludeComponentIndex;
         }
 
-        public void PackTime(NetworkWriter writer, float time)
+        public void PackTime(NetworkWriter writer, double time)
         {
             timePacker.Pack(writer, time);
         }
@@ -110,7 +111,7 @@ namespace JamesFrowen.PositionSync
         }
 
 
-        public float UnpackTime(NetworkReader reader)
+        public double UnpackTime(NetworkReader reader)
         {
             return timePacker.Unpack(reader);
         }
@@ -148,6 +149,39 @@ namespace JamesFrowen.PositionSync
                 pos = default;
                 rot = default;
                 return false;
+            }
+        }
+
+
+
+        /// <summary>
+        /// Packs a float using <see cref="ZigZag"/> and <see cref="VarIntBlocksPacker"/>
+        /// </summary>
+        public sealed class VarDoublePacker
+        {
+            private readonly int _blockSize;
+            private readonly double _precision;
+            private readonly double _inversePrecision;
+
+            public VarDoublePacker(double precision, int blockSize)
+            {
+                _precision = precision;
+                _blockSize = blockSize;
+                _inversePrecision = 1 / precision;
+            }
+
+            public void Pack(NetworkWriter writer, double value)
+            {
+                var scaled = (int)Math.Round(value * _inversePrecision);
+                var zig = ZigZag.Encode(scaled);
+                VarIntBlocksPacker.Pack(writer, zig, _blockSize);
+            }
+
+            public double Unpack(NetworkReader reader)
+            {
+                var zig = (uint)VarIntBlocksPacker.Unpack(reader, _blockSize);
+                var scaled = ZigZag.Decode(zig);
+                return scaled * _precision;
             }
         }
     }

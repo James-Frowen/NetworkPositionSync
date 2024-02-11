@@ -59,7 +59,7 @@ namespace JamesFrowen.PositionSync
         /// Applies a state update on the server instance.
         /// <para>Called on server.</para>
         /// </summary>
-        internal void ApplyOnServer(TransformState state, float time)
+        internal void ApplyOnServer(TransformState state, double time)
         {
             // This should not happen. throw an Exception to disconnect the attacker
             if (!clientAuthority)
@@ -80,7 +80,7 @@ namespace JamesFrowen.PositionSync
         /// Applies a state update on the client instance.
         /// <para>Called on client.</para>
         /// </summary>
-        internal void ApplyOnClient(TransformState state, float time)
+        internal void ApplyOnClient(TransformState state, double time)
         {
             // Not host.
             // Host will have already handled movement in servers code
@@ -311,7 +311,7 @@ namespace JamesFrowen.PositionSync
         public void OnStopServer()
         {
             // null check incase OnStopClient is called first
-            if (_system !=null)
+            if (_system != null)
                 _system.Behaviours.RemoveBehaviour(this);
             _system = null;
         }
@@ -335,7 +335,7 @@ namespace JamesFrowen.PositionSync
         /// <para>Adds to buffer for interpolation</para>
         /// </summary>
         /// <param name="state"></param>
-        private void AddSnapShotToBuffer(TransformState state, float serverTime)
+        private void AddSnapShotToBuffer(TransformState state, double serverTime)
         {
             // dont apply on local owner
             if (IsLocalClientInControl)
