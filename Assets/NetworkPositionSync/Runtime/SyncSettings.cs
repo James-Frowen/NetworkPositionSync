@@ -172,14 +172,14 @@ namespace JamesFrowen.PositionSync
 
             public void Pack(NetworkWriter writer, double value)
             {
-                var scaled = (int)Math.Round(value * _inversePrecision);
+                var scaled = (long)Math.Round(value * _inversePrecision);
                 var zig = ZigZag.Encode(scaled);
                 VarIntBlocksPacker.Pack(writer, zig, _blockSize);
             }
 
             public double Unpack(NetworkReader reader)
             {
-                var zig = (uint)VarIntBlocksPacker.Unpack(reader, _blockSize);
+                var zig = VarIntBlocksPacker.Unpack(reader, _blockSize);
                 var scaled = ZigZag.Decode(zig);
                 return scaled * _precision;
             }
