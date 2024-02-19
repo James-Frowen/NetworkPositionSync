@@ -1,3 +1,10 @@
+## [7.0.1](https://github.com/James-Frowen/NetworkPositionSync/compare/v7.0.0...v7.0.1) (2024-02-19)
+
+
+### Bug Fixes
+
+* fixing time packing returning negative values ([3ad84f2](https://github.com/James-Frowen/NetworkPositionSync/commit/3ad84f29d2cb2323bbe7a6bb0dd68db0c3a98b0f))
+
 # [7.0.0](https://github.com/James-Frowen/NetworkPositionSync/compare/v6.0.5...v7.0.0) (2024-02-11)
 
 
