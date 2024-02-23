@@ -134,12 +134,12 @@ namespace JamesFrowen.PositionSync
         {
             if (showDebugGui)
             {
-                var delay = _system.TimeSync.LatestServerTime - _system.TimeSync.InterpolationTimeField;
+                var delay = _system.TimeSync.LatestServerTime - _system.TimeSync.Time;
                 timeDelayAvg.Add(delay);
                 GUILayout.Label($"ServerTime: {_system.TimeSync.LatestServerTime:0.000}");
-                GUILayout.Label($"InterpTime: {_system.TimeSync.InterpolationTimeField:0.000}");
+                GUILayout.Label($"InterpTime: {_system.TimeSync.Time:0.000}");
                 GUILayout.Label($"Time Delta: {delay:0.000} smooth:{timeDelayAvg.Value:0.000} scale:{_system.TimeSync.DebugScale:0.000}");
-                GUILayout.Label(snapshotBuffer.ToDebugString(_system.TimeSync.InterpolationTimeField));
+                GUILayout.Label(snapshotBuffer.ToDebugString(_system.TimeSync.Time));
             }
         }
 #endif
@@ -414,7 +414,7 @@ namespace JamesFrowen.PositionSync
             if (snapshotBuffer.IsEmpty)
                 return;
 
-            var snapshotTime = _system.TimeSync.InterpolationTimeField;
+            var snapshotTime = _system.TimeSync.Time;
             var state = snapshotBuffer.GetLinearInterpolation(snapshotTime);
             // todo add trace log
             if (logger.LogEnabled())

@@ -62,7 +62,7 @@ namespace JamesFrowen.PositionSync
                 var pos = snapshot.state.position;
                 var hash = (pos.x * 501) + pos.z;
                 markers[i].GetComponent<Renderer>().material.color = Color.HSVToRGB(hash * 20 % 1, 1, 1);
-                var snapshotTime = _system.TimeSync.InterpolationTimeField;
+                var snapshotTime = _system.TimeSync.Time;
 
                 var absTimeDiff = Mathf.Abs((float)(snapshotTime - snapshot.time));
                 var sizeFromDiff = Mathf.Clamp01((maxTime - absTimeDiff) / maxTime);
