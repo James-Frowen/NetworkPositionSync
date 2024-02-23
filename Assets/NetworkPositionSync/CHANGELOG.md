@@ -1,3 +1,10 @@
+## [7.0.2](https://github.com/James-Frowen/NetworkPositionSync/compare/v7.0.1...v7.0.2) (2024-02-23)
+
+
+### Bug Fixes
+
+* stopping warnings from use of Obsolete InterpolationTimeField ([051e618](https://github.com/James-Frowen/NetworkPositionSync/commit/051e618f5f6ae81976c30a7be293fb540561e7e6))
+
 ## [7.0.1](https://github.com/James-Frowen/NetworkPositionSync/compare/v7.0.0...v7.0.1) (2024-02-19)
 
 
