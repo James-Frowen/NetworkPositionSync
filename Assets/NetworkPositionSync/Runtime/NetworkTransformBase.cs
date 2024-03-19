@@ -164,6 +164,8 @@ namespace Mirage.SyncPosition
             var startPos = dataWriter.BitPosition;
             WriteSnapshot(dataWriter);
 
+            // TODO use c# object as proxy instead of sending size
+            //      we can then leave that project in the object dictionary for 1-2 seconds after it is destroyed so that we can continue to read the data
             if (includeWriteSize)
             {
                 var endPos = dataWriter.BitPosition;
