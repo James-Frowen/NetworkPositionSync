@@ -1,3 +1,13 @@
+# [8.0.0](https://github.com/James-Frowen/NetworkPositionSync/compare/v7.0.2...v8.0.0) (2024-04-01)
+
+
+* feat!: changing SyncMode to just have SendToAll and SendToObservers ([b9eedeb](https://github.com/James-Frowen/NetworkPositionSync/commit/b9eedeb7efab204967c743105404f51b2acf2a48))
+
+
+### BREAKING CHANGES
+
+* SyncMode now only has two modes. SendToDirtyObservers_PackOnce mode renamed to SendToObservers and index changed from 4 to 2, Validate should auto convert from 4 to 2
+
 ## [7.0.2](https://github.com/James-Frowen/NetworkPositionSync/compare/v7.0.1...v7.0.2) (2024-02-23)
 
 
