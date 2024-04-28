@@ -255,7 +255,7 @@ namespace Mirage.SyncPosition
             {
                 NetworkTransformBase.ReadAll(time, metaReader, dataReader, _includeWriteSize);
 
-                // if equal, message was fragmented, dont uppdate time twice
+                // if equal, message was fragmented, dont update time twice
                 if (time != lastTime)
                     InterpolationTime.OnMessage(time);
             }
@@ -276,7 +276,7 @@ namespace Mirage.SyncPosition
 
                 NetworkTransformBase.ReadAll(time, metaReader, dataReader, _includeWriteSize);
 
-                // there might be multiple clients so dont update local time onmessage time here, should only run on host anyway
+                // there might be multiple clients so dont update local time onMessage time here, should only run on host anyway
                 //InterpolationTime.OnMessage(time);
             }
         }
@@ -287,7 +287,7 @@ namespace Mirage.SyncPosition
             [Tooltip("SendToAll option skips visibility and sends position to all ready connections.")]
             public SyncMode SyncMode;
 
-            [Tooltip("How often server sends updates, or client if client had authority.\nNote: this shoulld be set even if IntervalTiming is NoInterval, because Delay is a multiple of this interval")]
+            [Tooltip("How often server sends updates, or client if client had authority.\nNote: this should be set even if IntervalTiming is NoInterval, because Delay is a multiple of this interval")]
             public float SyncInterval;
             [Tooltip("How SyncInterval is used")]
             public SyncTiming IntervalTiming;

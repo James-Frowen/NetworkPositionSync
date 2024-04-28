@@ -46,7 +46,12 @@ namespace Mirage.SyncPosition
             _rotationPacker = _packSettings.GetRotationPacker();
         }
 
-        protected override Snapshot CreateSnapshot()
+        protected override bool CreateSnapshot(out Snapshot newSnapshot, bool force)
+        {
+            newSnapshot = CreateSnapshot();
+            return force || HasChanged(newSnapshot);
+        }
+        private Snapshot CreateSnapshot()
         {
             switch (_coordinatesType.Space)
             {
@@ -62,6 +67,11 @@ namespace Mirage.SyncPosition
                     var relRot = Quaternion.Inverse(other.rotation) * transform.rotation;
                     return new Snapshot(relPos, relRot);
             }
+        }
+        private bool HasChanged(Snapshot newSnapshot)
+        {
+            return Vector3.Distance(newSnapshot.Position, _snapshot.Position) > _positionSensitivity
+                || Quaternion.Angle(newSnapshot.Rotation, _snapshot.Rotation) > _rotationSensitivity;
         }
 
         protected override void ApplySnapshot(Snapshot newSnapshot)
@@ -85,18 +95,11 @@ namespace Mirage.SyncPosition
             }
         }
 
-        protected override bool HasChanged(Snapshot newSnapshot)
-        {
-            return Vector3.Distance(newSnapshot.Position, _snapshot.Position) > _positionSensitivity
-                || Quaternion.Angle(newSnapshot.Rotation, _snapshot.Rotation) > _rotationSensitivity;
-        }
 
-        protected override void WriteSnapshot(NetworkWriter writer)
+        protected override void WriteSnapshot(NetworkWriter writer, Snapshot snapshot)
         {
-            // we store values in these fields when Isdirty is called,
-            // so get them from that instead of transform again
-            _positionPacker.Pack(writer, _snapshot.Position);
-            _rotationPacker.Pack(writer, _snapshot.Rotation);
+            _positionPacker.Pack(writer, snapshot.Position);
+            _rotationPacker.Pack(writer, snapshot.Rotation);
         }
         protected override Snapshot ReadSnapshot(NetworkReader reader)
         {

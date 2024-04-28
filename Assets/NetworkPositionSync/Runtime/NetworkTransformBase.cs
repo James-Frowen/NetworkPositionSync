@@ -36,10 +36,13 @@ namespace Mirage.SyncPosition
         private static readonly ILogger logger = LogFactory.GetLogger<NetworkTransformBase>();
 
         /// <summary>
-        /// Max possible size of write. Neede to know if message needs to be split up
+        /// Max possible size of write. Need to know if message needs to be split up
         /// </summary>
         public abstract int MaxWriteSize { get; }
-        public abstract void Setup();
+        /// <summary>
+        /// Called once this behaviour is added to <see cref="SyncPositionSystem"/>. Which will happen from the <see cref="NetworkWorld.onSpawn"/> event.
+        /// </summary>
+        public virtual void Setup() { }
         public abstract void WriteIfDirty(NetworkWriter headerWriter, PooledNetworkWriter dataWriter, bool includeWriteSize);
         public abstract void ClientUpdate(float viewTime, float removeTime);
 
@@ -118,22 +121,45 @@ namespace Mirage.SyncPosition
         }
 
         protected abstract ISnapshotInterpolator<T> CreateInterpolator();
-        protected abstract void WriteSnapshot(NetworkWriter writer);
-        protected abstract T ReadSnapshot(NetworkReader reader);
 
-        /// <summary>Create a snapshot from the current Transform</summary>
-        protected abstract T CreateSnapshot();
+        /// <summary>
+        /// Create a snapshot from the current Transform.
+        /// can return false if the Transform is unchanged in order to not send any data.
+        /// If <paramref name="force"/> is true then the snapshot must be returned even if unchanged.
+        /// </summary>
+        /// <param name="newSnapshot"></param>
+        /// <param name="force"></param>
+        /// <returns></returns>
+        protected abstract bool CreateSnapshot(out T newSnapshot, bool force);
+        /// <summary>
+        /// Used to apply a snapshot to the object.
+        /// Should use <paramref name="newSnapshot"/> to set position/etc on transform or rigidbody
+        /// </summary>
+        /// <param name="newSnapshot"></param>
         protected abstract void ApplySnapshot(T newSnapshot);
-        protected abstract bool HasChanged(T newSnapshot);
+
+        /// <summary>
+        /// Optional override for when you want to change how this behaviour serializes a snapshot
+        /// </summary>
+        /// <param name="writer"></param>
+        /// <param name="snapshot"></param>
+        protected virtual void WriteSnapshot(NetworkWriter writer, T snapshot) => writer.Write(snapshot);
+        /// <summary>
+        /// Optional override for when you want to change how this behaviour serializes a snapshot
+        /// </summary>
+        /// <param name="writer"></param>
+        /// <param name="snapshot"></param>
+        protected virtual T ReadSnapshot(NetworkReader reader) => reader.Read<T>();
+
 
         protected sealed override void ReadAndInsertSnapshot(NetworkReader reader, float insertTime)
         {
-            var snap = ReadSnapshot(reader);
+            var newSnapshot = ReadSnapshot(reader);
 
             if (IsServer)
             {
                 // store latest client snapshot so server can forward it to other clients
-                _clientAuthoritySnapshot = snap;
+                _clientAuthoritySnapshot = newSnapshot;
                 _hasClientAuthoritySnapshot = true;
             }
 
@@ -142,27 +168,30 @@ namespace Mirage.SyncPosition
                 // insert a snapshot so that we have a starting point
                 // time isn't important, just has to be before servertime
                 if (_snapshotBuffer.IsEmpty)
-                    _snapshotBuffer.AddSnapShot(CreateSnapshot(), insertTime - 0.1f);
-
-                _snapshotBuffer.AddSnapShot(snap, insertTime);
+                {
+                    var created = CreateSnapshot(out var clientSnapshot, true);
+                    Debug.Assert(created, "Snapshot not created when force was true");
+                    _snapshotBuffer.AddSnapShot(clientSnapshot, insertTime - 0.1f);
+                }
+                _snapshotBuffer.AddSnapShot(newSnapshot, insertTime);
             }
             else
             {
                 // apply snapshot right away on server
-                ApplySnapshot(snap);
+                ApplySnapshot(newSnapshot);
             }
         }
 
         public sealed override void WriteIfDirty(NetworkWriter metaWriter, PooledNetworkWriter dataWriter, bool includeWriteSize)
         {
-            if (!GetChangedSnapShot(out var snap))
+            if (!GetChangedSnapShot(out var newSnapshot))
                 return;
 
-            _snapshot = snap;
+            _snapshot = newSnapshot;
 
             metaWriter.WriteNetworkBehaviour(this);
             var startPos = dataWriter.BitPosition;
-            WriteSnapshot(dataWriter);
+            WriteSnapshot(dataWriter, _snapshot);
 
             // TODO use c# object as proxy instead of sending size
             //      we can then leave that project in the object dictionary for 1-2 seconds after it is destroyed so that we can continue to read the data
@@ -197,8 +226,7 @@ namespace Mirage.SyncPosition
             }
             else
             {
-                snapshot = CreateSnapshot();
-                return HasChanged(snapshot);
+                return CreateSnapshot(out snapshot, false);
             }
         }
 
