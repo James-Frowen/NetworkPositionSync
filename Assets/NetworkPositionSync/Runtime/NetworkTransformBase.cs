@@ -100,9 +100,6 @@ namespace Mirage.SyncPosition
         // just use base type for this logger, dont need different logger for generic
         private static readonly ILogger logger = LogFactory.GetLogger<NetworkTransformBase>();
 
-        [Tooltip("Set what values to usee for position and rotation.\nworld use transform.position\nlocal uses transform.localPosition\nrelative uses (RelativeTo.position - transform.position)")]
-        [SerializeField] protected CoordinatesType _coordinatesType = new CoordinatesType { Space = Coordinates.World };
-
         [Tooltip("Set to true if moves come from owner client, set to false if moves always come from server")]
         [SerializeField] internal bool _clientAuthority = false;
 

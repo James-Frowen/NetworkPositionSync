@@ -29,6 +29,10 @@ namespace Mirage.SyncPosition
 {
     public class NetworkTransform3D : NetworkTransformBase<NetworkTransform3D.Snapshot>
     {
+        [Tooltip("Set what values to use for position and rotation.\nworld use transform.position\nlocal uses transform.localPosition\nrelative uses (RelativeTo.position - transform.position)")]
+        [SerializeField] protected CoordinatesType _coordinatesType = new CoordinatesType { Space = Coordinates.World };
+
+        [Header("Compression")]
         [SerializeField] private PackSettings3D _packSettings;
         [SerializeField] private float _positionSensitivity = 0.01f;
         [SerializeField] private float _rotationSensitivity = 0.01f;
