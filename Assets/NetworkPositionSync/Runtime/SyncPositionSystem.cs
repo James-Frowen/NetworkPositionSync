@@ -24,6 +24,7 @@ SOFTWARE.
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using Mirage.Logging;
 using Mirage.Serialization;
@@ -125,7 +126,7 @@ namespace Mirage.SyncPosition
             switch (_syncSettings.SyncMode)
             {
                 case SyncMode.SendToAll:
-                    _send = new SendAll(_behaviours, _maxPacketSize, sendIfEmpty: transform, _includeWriteSize, (msg) => Server.SendToAll(msg, excludeLocalPlayer: true, Channel.Unreliable));
+                    _send = new SendAll(_behaviours, _maxPacketSize, sendIfEmpty: true, _includeWriteSize, (msg) => Server.SendToMany(Server.Players.Where(x => x.IsAuthenticated), msg, excludeLocalPlayer: true, Channel.Unreliable));
                     break;
                 case SyncMode.SendToObservers:
                     _send = new SendObservers(Server, _behaviours, _maxPacketSize, _includeWriteSize);
@@ -205,7 +206,6 @@ namespace Mirage.SyncPosition
                 return;
 
             var deltaTime = GetDeltaTime();
-
             InterpolationTime.OnUpdate(deltaTime);
 
             var snapshotTime = InterpolationTime.Time;
@@ -218,7 +218,7 @@ namespace Mirage.SyncPosition
 
         private float GetDeltaTime()
         {
-            var now = Time.unscaledTime;
+            var now = Time.unscaledTimeAsDouble;
             var deltaTime = now - _previousTime;
             _previousTime = now;
             return (float)deltaTime;
@@ -226,13 +226,38 @@ namespace Mirage.SyncPosition
 
         private void LateUpdate()
         {
-            var now = Time.unscaledTime;
+            // neither active
+            if (!ClientActive && !ServerActive)
+                return;
+
+            // note: both server and client need to check send, because client auth
+            var now = Time.unscaledTimeAsDouble;
             if (logger.LogEnabled()) logger.Log($"{name} Time till Sync: {_nextSyncTime - now:0.000}" + (now > _nextSyncTime ? "  Updating" : ""));
             if (now > _nextSyncTime)
             {
                 Tmp_UpdateTime(_syncSettings.SyncInterval, _syncSettings.IntervalTiming, ref _nextSyncTime, now);
 
-                _send?.Update(now, _maxItemSize);
+                double syncTime;
+                if (ServerActive)
+                {
+                    syncTime = now;
+                }
+                else // client
+                {
+                    // Client must send message such that the time it arrives on the server is enough that server can lerp towards it
+                    // what client knows:
+                    // - NetworkTime.time (for RTT)
+                    // - its local time
+                    // - server time via
+                    // note: client should never be sending localTime, because that is not linked to server in anyway
+                    // todo it would be good to use InterpolationTime to update NetworkTime, instead of ping/pong, but currently no way to do this
+                    var networkTime = Client.World.Time;
+                    syncTime = InterpolationTime.LatestServerTime + networkTime.Rtt + networkTime.RttVar;
+                }
+
+                _send?.Update(syncTime, _maxItemSize);
+                if (Server.IsHost)
+                    InterpolationTime.OnMessage(now);
             }
         }
         // todo change back to Mirage.SyncSettings.UpdateTime after mirage changes to double
@@ -267,8 +292,10 @@ namespace Mirage.SyncPosition
             var lastTime = InterpolationTime.LatestServerTime;
 
             if (time < lastTime)
-                // old message, drop it
+            {
+                if (logger.LogEnabled()) logger.Log($"Received old message {time:0.000}, but latest receive was {lastTime:0.000}");
                 return;
+            }
 
             using (PooledNetworkReader metaReader = NetworkReaderPool.GetReader(msg.MetaPayload, Client.World),
                                        dataReader = NetworkReaderPool.GetReader(msg.DataPayload, Client.World))
@@ -281,23 +308,31 @@ namespace Mirage.SyncPosition
             }
         }
 
+        private readonly Dictionary<INetworkPlayer, double> clientAuthTime = new Dictionary<INetworkPlayer, double>();
+
         /// <summary>
         /// Position from client to server
         /// </summary>
-        internal void ServerHandleNetworkPositionMessage(INetworkPlayer _, PositionMessage msg)
+        internal void ServerHandleNetworkPositionMessage(INetworkPlayer player, PositionMessage msg)
         {
+            var time = msg.Time;
+            if (clientAuthTime.TryGetValue(player, out var lastTime) && time < lastTime)
+            {
+                if (logger.LogEnabled()) logger.Log($"FromClient:{player}, Received old message {time:0.000}, but latest receive was {lastTime:0.000}");
+                return;
+            }
+            clientAuthTime[player] = time;
+
+            if (Server.IsHost)
+            {
+                if (time < InterpolationTime.ClientTime)
+                    if (logger.WarnEnabled()) logger.LogWarning($"Message from client arrived too late for host, msg:{time:0.000} hostTime:{InterpolationTime.ClientTime}");
+            }
+
             using (PooledNetworkReader metaReader = NetworkReaderPool.GetReader(msg.MetaPayload, Client.World),
                                        dataReader = NetworkReaderPool.GetReader(msg.DataPayload, Client.World))
             {
-                var time = msg.Time;
-
-                // todo IMPORTANT ensure old message are dropped, otherwise snapshot buffer will throw
-                // todo, handle host time stuff...
-
                 NetworkTransformBase.ReadAll(time, metaReader, dataReader, _includeWriteSize);
-
-                // there might be multiple clients so dont update local time onMessage time here, should only run on host anyway
-                //InterpolationTime.OnMessage(time);
             }
         }
 
@@ -345,7 +380,7 @@ namespace Mirage.SyncPosition
             // msgId,time,payload sizes
             public const int HEADER_SIZE = 2 + 4 + (2 * 2);
 
-            public float Time;
+            public double Time;
 
             /// <summary>
             /// Header values for each object. Their Netid, compIndex, write size (optional)
@@ -379,7 +414,7 @@ namespace Mirage.SyncPosition
             /// <summary>
             /// Checks for changes and send messages
             /// </summary>
-            public abstract void Update(float time, int maxItemSize);
+            public abstract void Update(double time, int maxItemSize);
         }
 
         private class SendAll : Send
@@ -403,7 +438,7 @@ namespace Mirage.SyncPosition
             /// </summary>
             /// <param name=""></param>
             /// <param name="send"></param>
-            public override void Update(float time, int maxItemSize)
+            public override void Update(double time, int maxItemSize)
             {
                 if (_behaviours.Count == 0)
                     return;
@@ -477,7 +512,7 @@ namespace Mirage.SyncPosition
             /// <para>But Packs once and copies bytes</para>
             /// </summary>
             /// <param name="time"></param>
-            public override void Update(float time, int maxItemSize)
+            public override void Update(double time, int maxItemSize)
             {
                 WriteAllBehaviours(time, maxItemSize);
 
@@ -487,7 +522,7 @@ namespace Mirage.SyncPosition
                 ReleaseWriters();
             }
 
-            private void WriteAllBehaviours(float time, int maxItemSize)
+            private void WriteAllBehaviours(double time, int maxItemSize)
             {
                 using (PooledNetworkWriter packMetaWriter = NetworkWriterPool.GetWriter(), packDataWriter = NetworkWriterPool.GetWriter())
                 {
@@ -536,7 +571,7 @@ namespace Mirage.SyncPosition
                 }
             }
 
-            private void FlushBuffers(float time)
+            private void FlushBuffers(double time)
             {
                 var hostPlayer = _server.LocalPlayer;
                 foreach (var player in _server.Players)
@@ -599,7 +634,7 @@ namespace Mirage.SyncPosition
                 /// </summary>
                 /// <param name="player"></param>
                 /// <param name="time"></param>
-                public void Flush(INetworkPlayer player, float time)
+                public void Flush(INetworkPlayer player, double time)
                 {
                     // if not sent yet, or has new data
                     if (!HasSent || Meta.BitPosition > 0)
@@ -608,7 +643,7 @@ namespace Mirage.SyncPosition
                     }
                 }
 
-                public void Send(INetworkPlayer player, float time)
+                public void Send(INetworkPlayer player, double time)
                 {
                     var msg = new PositionMessage
                     {

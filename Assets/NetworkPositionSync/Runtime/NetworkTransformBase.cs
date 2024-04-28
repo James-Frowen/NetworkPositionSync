@@ -35,6 +35,9 @@ namespace Mirage.SyncPosition
     {
         private static readonly ILogger logger = LogFactory.GetLogger<NetworkTransformBase>();
 
+        [Tooltip("Set to true if moves come from owner client, set to false if moves always come from server")]
+        [SerializeField] internal bool _clientAuthority = false;
+
         /// <summary>
         /// Max possible size of write. Need to know if message needs to be split up
         /// </summary>
@@ -46,7 +49,7 @@ namespace Mirage.SyncPosition
         public abstract void WriteIfDirty(NetworkWriter headerWriter, PooledNetworkWriter dataWriter, bool includeWriteSize);
         public abstract void ClientUpdate(double viewTime, double removeTime);
 
-        public static void ReadAll(float insertTime, PooledNetworkReader metaReader, PooledNetworkReader dataReader, bool includeWriteSize)
+        public static void ReadAll(double insertTime, PooledNetworkReader metaReader, PooledNetworkReader dataReader, bool includeWriteSize)
         {
             // assume 1 state is atleast 3 bytes
             // (it should be more, but there shouldn't be random left over bits in reader so 3 is enough for check)
@@ -78,7 +81,7 @@ namespace Mirage.SyncPosition
                 behavior.ReadAndInsertSnapshot(dataReader, insertTime);
             }
         }
-        protected abstract void ReadAndInsertSnapshot(NetworkReader reader, float insertTime);
+        protected abstract void ReadAndInsertSnapshot(NetworkReader reader, double insertTime);
     }
 
     public enum Coordinates
@@ -99,9 +102,6 @@ namespace Mirage.SyncPosition
     {
         // just use base type for this logger, dont need different logger for generic
         private static readonly ILogger logger = LogFactory.GetLogger<NetworkTransformBase>();
-
-        [Tooltip("Set to true if moves come from owner client, set to false if moves always come from server")]
-        [SerializeField] internal bool _clientAuthority = false;
 
         /// <summary>
         /// Current Snapshot
@@ -149,7 +149,7 @@ namespace Mirage.SyncPosition
         protected virtual T ReadSnapshot(NetworkReader reader) => reader.Read<T>();
 
 
-        protected sealed override void ReadAndInsertSnapshot(NetworkReader reader, float insertTime)
+        protected sealed override void ReadAndInsertSnapshot(NetworkReader reader, double insertTime)
         {
             var newSnapshot = ReadSnapshot(reader);
 
@@ -163,12 +163,12 @@ namespace Mirage.SyncPosition
             if (IsClient)
             {
                 // insert a snapshot so that we have a starting point
-                // time isn't important, just has to be before servertime
+                // time isn't important, just has to be before serverTime
                 if (_snapshotBuffer.IsEmpty)
                 {
                     var created = CreateSnapshot(out var clientSnapshot, true);
                     Debug.Assert(created, "Snapshot not created when force was true");
-                    _snapshotBuffer.AddSnapShot(clientSnapshot, insertTime - 0.1f);
+                    _snapshotBuffer.AddSnapShot(clientSnapshot, insertTime - 0.1);
                 }
                 _snapshotBuffer.AddSnapShot(newSnapshot, insertTime);
             }
@@ -204,8 +204,7 @@ namespace Mirage.SyncPosition
         {
             // if client auth, then we dont need to create and check if snapshot is changed,
             // server can just forward it
-            // todo host mode?
-            if (_clientAuthority && Owner != null)
+            if (_clientAuthority && Owner != null && Owner != Server.LocalPlayer)
             {
                 // no new state from client to forward
                 if (_hasClientAuthoritySnapshot)

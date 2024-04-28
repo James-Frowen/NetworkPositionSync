@@ -33,7 +33,7 @@ namespace Mirage.SyncPosition
 {
     public interface ISnapshotInterpolator<T>
     {
-        T Lerp(T a, T b, float alpha);
+        T Interpolate(double from, T a, double to, T b, float alpha);
     }
     public class SnapshotBuffer<T>
     {
@@ -153,7 +153,7 @@ namespace Mirage.SyncPosition
                     // todo add trace log
                     if (logger.LogEnabled()) logger.Log($"alpha:{alpha:0.000}");
 
-                    return interpolator.Lerp(from.state, to.state, alpha);
+                    return interpolator.Interpolate(fromTime, from.state, toTime, to.state, alpha);
                 }
             }
 

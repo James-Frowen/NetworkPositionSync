@@ -133,7 +133,7 @@ namespace Mirage.SyncPosition
 
         private class Interpolator : ISnapshotInterpolator<Snapshot>
         {
-            public Snapshot Lerp(Snapshot a, Snapshot b, float alpha)
+            public Snapshot Interpolate(double from, Snapshot a, double to, Snapshot b, float alpha)
             {
                 var pos = Vector2.Lerp(a.Position, b.Position, alpha);
                 var rot = Mathf.LerpAngle(a.Rotation, b.Rotation, alpha);
