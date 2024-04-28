@@ -54,9 +54,9 @@ namespace Mirage.SyncPosition
 
         private int _maxItemSize;
 
-        private float _nextSyncTime;
+        private double _nextSyncTime;
         private int _maxPacketSize;
-        private float _previousTime;
+        private double _previousTime;
 
         /// <summary>
         /// class that controls sending
@@ -221,7 +221,7 @@ namespace Mirage.SyncPosition
             var now = Time.unscaledTime;
             var deltaTime = now - _previousTime;
             _previousTime = now;
-            return deltaTime;
+            return (float)deltaTime;
         }
 
         private void LateUpdate()
@@ -230,12 +230,32 @@ namespace Mirage.SyncPosition
             if (logger.LogEnabled()) logger.Log($"{name} Time till Sync: {_nextSyncTime - now:0.000}" + (now > _nextSyncTime ? "  Updating" : ""));
             if (now > _nextSyncTime)
             {
-                Mirage.SyncSettings.UpdateTime(_syncSettings.SyncInterval, _syncSettings.IntervalTiming, ref _nextSyncTime, now);
+                Tmp_UpdateTime(_syncSettings.SyncInterval, _syncSettings.IntervalTiming, ref _nextSyncTime, now);
 
                 _send?.Update(now, _maxItemSize);
             }
         }
-
+        // todo change back to Mirage.SyncSettings.UpdateTime after mirage changes to double
+        public static void Tmp_UpdateTime(float interval, SyncTiming timing, ref double nextSyncTime, double now)
+        {
+            switch (timing)
+            {
+                case SyncTiming.Variable:
+                    // atlesat Interval before next sync 
+                    nextSyncTime = now + interval;
+                    break;
+                case SyncTiming.Fixed:
+                    // just add Interval, so that it syncs 1/Interval times per second
+                    // see SyncTiming.Fixed for example
+                    nextSyncTime += interval;
+                    break;
+                default:
+                case SyncTiming.NoInterval:
+                    // always sync
+                    nextSyncTime = now;
+                    break;
+            }
+        }
 
         private void ClientHandleNetworkPositionMessage(PositionMessage msg)
         {
