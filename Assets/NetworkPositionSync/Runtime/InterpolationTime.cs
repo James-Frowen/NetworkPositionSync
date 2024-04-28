@@ -60,13 +60,12 @@ namespace Mirage.SyncPosition
     public class InterpolationTime
     {
         private static readonly ILogger logger = LogFactory.GetLogger<InterpolationTime>();
-
         private bool initialized;
 
         /// <summary>
         /// The time value that the client uses to interpolate
         /// </summary>
-        private float _clientTime;
+        private double _clientTime;
 
         /// <summary>
         /// The client will multiply deltaTime by this scale time value each frame
@@ -83,9 +82,11 @@ namespace Mirage.SyncPosition
         /// How much below the goalOffset difference are we allowed to go before changing the timescale
         /// </summary>
         private readonly float negativeThreshold;
-        private readonly float fastScale = 1.01f;
-        private const float normalScale = 1f;
-        private readonly float slowScale = 0.99f;
+
+        /// <summary>
+        /// how much to modify time scale by if client is ahead/behind the server
+        /// </summary>
+        private readonly float _scaleModifier;
 
         /// <summary>
         /// Is the difference between previous time and new time too far apart?
@@ -94,12 +95,12 @@ namespace Mirage.SyncPosition
         private readonly float _skipAheadThreshold;
 
         // Used for debug purposes. Move along...
-        private float _latestServerTime;
+        private double _latestServerTime;
 
         /// <summary>
         /// Timer that follows server time
         /// </summary>
-        public float ClientTime
+        public double ClientTime
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _clientTime;
@@ -107,7 +108,7 @@ namespace Mirage.SyncPosition
         /// <summary>
         /// Returns the last time received by the server
         /// </summary>
-        public float LatestServerTime
+        public double LatestServerTime
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _latestServerTime;
@@ -116,7 +117,7 @@ namespace Mirage.SyncPosition
         /// <summary>
         /// Current time to use for interpolation 
         /// </summary>
-        public float Time
+        public double Time
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _clientTime - ClientDelay;
@@ -133,22 +134,22 @@ namespace Mirage.SyncPosition
         public float DebugScale => clientScaleTime;
 
         /// <param name="diffThreshold">How far off client time can be before changing its speed. A good recommended value is half of SyncInterval.</param>
+        /// <param name="skipThreshold">How many ticks behind before skipping ahead to catch up</param>
         /// <param name="movingAverageCount">How many ticks are used for averaging purposes, you may need to increase or decrease with frame rate.</param>
-        public InterpolationTime(float syncInterval, float diffThreshold = 0.5f, float timeScale = 0.01f, float skipThreshold = 2.5f, float tickDelay = 2, int movingAverageCount = 30)
+        public InterpolationTime(float syncInterval, float diffThreshold = 0.5f, float timeScale = 0.01f, float skipThreshold = 20f, float tickDelay = 2, int movingAverageCount = 30)
         {
             positiveThreshold = syncInterval * diffThreshold;
             negativeThreshold = -positiveThreshold;
             _skipAheadThreshold = syncInterval * skipThreshold;
 
-            fastScale = normalScale + timeScale;
-            slowScale = normalScale - timeScale;
+            _scaleModifier = timeScale;
 
             ClientDelay = syncInterval * tickDelay;
 
             diffAvg = new ExponentialMovingAverage(movingAverageCount);
 
             // Client should always start at normal time scale.
-            clientScaleTime = normalScale;
+            clientScaleTime = 1f;
         }
 
         /// <summary>
@@ -160,11 +161,16 @@ namespace Mirage.SyncPosition
             _clientTime += deltaTime * clientScaleTime;
         }
 
+        public bool IsMessageOutOfOrder(double newServerTime)
+        {
+            return newServerTime < _latestServerTime;
+        }
+
         /// <summary>
         /// Updates <see cref="clientScaleTime"/> to keep <see cref="ClientTime"/> in line with <see cref="LatestServerTime"/>
         /// </summary>
         /// <param name="serverTime"></param>
-        public void OnMessage(float serverTime)
+        public void OnMessage(double serverTime)
         {
             // only check this if we are initialized
             if (initialized)
@@ -196,7 +202,8 @@ namespace Mirage.SyncPosition
             diffAvg.Add(diff);
 
             // Adjust the client time scale with the appropriate value.
-            AdjustClientTimeScale((float)diffAvg.Value);
+            // clamp just incase user given timeScale is a bad value
+            clientScaleTime = Mathf.Clamp(CalculateTimeScale((float)diffAvg.Value), 0.5f, 2f);
 
             // todo add trace level
             if (logger.LogEnabled()) logger.Log($"st: {serverTime:0.00}, ct: {_clientTime:0.00}, diff: {diff * 1000:0.0}, wanted: {diffAvg.Value * 1000:0.0}, scale: {clientScaleTime}");
@@ -215,10 +222,10 @@ namespace Mirage.SyncPosition
         /// <summary>
         /// Initializes and resets the system.
         /// </summary>
-        private void InitNew(float serverTime)
+        private void InitNew(double serverTime)
         {
             _clientTime = serverTime;
-            clientScaleTime = normalScale;
+            clientScaleTime = 1;
             diffAvg.Reset();
             initialized = true;
         }
@@ -226,22 +233,29 @@ namespace Mirage.SyncPosition
         /// <summary>
         /// Adjusts the client time scale based on the provided difference.
         /// </summary>
-        private void AdjustClientTimeScale(float diff)
+        private float CalculateTimeScale(float diff)
         {
             // Difference is calculated between server and client.
             // So if that difference is positive, we can run the client faster to catch up.
             // However, if it's negative, we need to slow the client down otherwise we run out of snapshots.            
             // Ideally, we want the difference vs the goal to be as close to 0 as possible.
 
-            // Server's ahead of us, we need to speed up.
-            if (diff > positiveThreshold)
-                clientScaleTime = fastScale;
-            // Server is falling behind us, we need to slow down.
-            else if (diff < negativeThreshold)
-                clientScaleTime = slowScale;
-            // Server and client are on par ("close enough"). Run at normal speed.
-            else
-                clientScaleTime = normalScale;
+            if (diff > positiveThreshold * 10) // really far ahead,
+                return 1 + (_scaleModifier * 8);
+
+            else if (diff > positiveThreshold) // Server's ahead of us, we need to speed up.
+                return 1 + _scaleModifier;
+
+            else if (diff < negativeThreshold * 10) // really far behind
+                return 1 - (_scaleModifier * 20);
+
+            else if (diff < negativeThreshold) // Server is falling behind us, we need to slow down.
+                // *2 here because we want to slow down faster, 
+                // if we dont there wont be any new snapshots to interpolate towards and game will be jittery
+                return 1 - (_scaleModifier * 4);
+
+            else // Server and client are on par ("close enough"). Run at normal speed.
+                return 1;
         }
     }
 }

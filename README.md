@@ -6,11 +6,12 @@ Network Transform using Snapshot Interpolation and other techniques to best sync
 
 ### Package Manager
 
-use package manager to get versions easily, or replace `#v1.0.3` with the tag, branch or full hash of the commit.
+use package manager to get versions easily, or replace `#v6.0.0` with the tag, branch or full hash of the commit.
 
-IMPORTANT: update `v4.1.0` with latest version on release page
+
+IMPORTANT: update `v6.0.0` with latest version on release page
 ```json
-"com.james-frowen.position-sync": "https://github.com/James-Frowen/NetworkPositionSync.git?path=/Assets/NetworkPositionSync#v4.1.0",
+"com.james-frowen.position-sync": "https://github.com/James-Frowen/NetworkPositionSync.git?path=/Assets/NetworkPositionSync#v6.0.0",
 ```
 
 ### Unity package
@@ -19,7 +20,7 @@ Download the UnityPackage or source code from [Release](https://github.com/James
 
 ## Setup
 
-1) Add `SyncPositionSystem` to your NetworkManager or same GameObject as `ServerObjectManager` and `ClientObjectManager`
+1) Add `SyncPositionSystem` to your NetworkManager or same GameObject as `NetworkServer` and `NetworkClient`
 2) Add `SyncPositionBehaviour` to your GameObjects
 3) Check inspector settings to make sure they make sense for your setup
 

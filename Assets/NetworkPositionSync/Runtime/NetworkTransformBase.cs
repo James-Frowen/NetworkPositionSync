@@ -44,7 +44,7 @@ namespace Mirage.SyncPosition
         /// </summary>
         public virtual void Setup() { }
         public abstract void WriteIfDirty(NetworkWriter headerWriter, PooledNetworkWriter dataWriter, bool includeWriteSize);
-        public abstract void ClientUpdate(float viewTime, float removeTime);
+        public abstract void ClientUpdate(double viewTime, double removeTime);
 
         public static void ReadAll(float insertTime, PooledNetworkReader metaReader, PooledNetworkReader dataReader, bool includeWriteSize)
         {
@@ -227,7 +227,7 @@ namespace Mirage.SyncPosition
             }
         }
 
-        public sealed override void ClientUpdate(float viewTime, float removeTime)
+        public sealed override void ClientUpdate(double viewTime, double removeTime)
         {
             var localOwner = _clientAuthority && HasAuthority;
             // only run Interpolation for remote owner
