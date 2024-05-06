@@ -26,7 +26,6 @@ using System;
 using Mirage;
 using Mirage.Serialization;
 using UnityEngine;
-using static JamesFrowen.PositionSync.SyncPacker;
 
 namespace JamesFrowen.PositionSync
 {
@@ -151,41 +150,7 @@ namespace JamesFrowen.PositionSync
                 return false;
             }
         }
-
-
-
-        /// <summary>
-        /// Packs a float using <see cref="ZigZag"/> and <see cref="VarIntBlocksPacker"/>
-        /// </summary>
-        public sealed class VarDoublePacker
-        {
-            private readonly int _blockSize;
-            private readonly double _precision;
-            private readonly double _inversePrecision;
-
-            public VarDoublePacker(double precision, int blockSize)
-            {
-                _precision = precision;
-                _blockSize = blockSize;
-                _inversePrecision = 1 / precision;
-            }
-
-            public void Pack(NetworkWriter writer, double value)
-            {
-                var scaled = (long)Math.Round(value * _inversePrecision);
-                var zig = ZigZag.Encode(scaled);
-                VarIntBlocksPacker.Pack(writer, zig, _blockSize);
-            }
-
-            public double Unpack(NetworkReader reader)
-            {
-                var zig = VarIntBlocksPacker.Unpack(reader, _blockSize);
-                var scaled = ZigZag.Decode(zig);
-                return scaled * _precision;
-            }
-        }
     }
-
     //[Serializable]
     //public class SyncSettingsDebug
     //{

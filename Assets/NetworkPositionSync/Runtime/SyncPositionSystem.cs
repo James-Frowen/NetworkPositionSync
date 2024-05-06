@@ -285,7 +285,7 @@ namespace JamesFrowen.PositionSync
                 {
                     payload = writer.ToArraySegment()
                 };
-                Server.SendToAll(msg, excludeLocalPlayer: true, MessageChannel);
+                Server.SendToAll(msg, authenticatedOnly: true, excludeLocalPlayer: true, MessageChannel);
             }
         }
 
