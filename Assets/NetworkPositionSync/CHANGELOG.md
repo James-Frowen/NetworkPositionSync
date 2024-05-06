@@ -1,3 +1,13 @@
+# [9.0.0](https://github.com/James-Frowen/NetworkPositionSync/compare/v8.0.0...v9.0.0) (2024-05-06)
+
+
+* fix!: fixing messages being sent to unauthenticated players ([dea4da5](https://github.com/James-Frowen/NetworkPositionSync/commit/dea4da52b44e9571c331523e9ce2acc9ba63a2d9))
+
+
+### BREAKING CHANGES
+
+* updating to mirage 149.1.0
+
 # [8.0.0](https://github.com/James-Frowen/NetworkPositionSync/compare/v7.0.2...v8.0.0) (2024-04-01)
 
 
