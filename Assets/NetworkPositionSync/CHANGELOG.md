@@ -1,3 +1,10 @@
+## [9.0.1](https://github.com/James-Frowen/NetworkPositionSync/compare/v9.0.0...v9.0.1) (2024-08-23)
+
+
+### Bug Fixes
+
+* re-adding NeedsUpdate check for server update ([9e7d8c5](https://github.com/James-Frowen/NetworkPositionSync/commit/9e7d8c5eefaf80622b7233553dd53c17ec26c9d3))
+
 # [9.0.0](https://github.com/James-Frowen/NetworkPositionSync/compare/v8.0.0...v9.0.0) (2024-05-06)
 
 
