@@ -352,8 +352,8 @@ namespace JamesFrowen.PositionSync
             dirtySet.Clear();
             foreach (var behaviour in Behaviours.Dictionary.Values)
             {
-                //if (!behaviour.NeedsUpdate())
-                //    continue;
+                if (!behaviour.NeedsUpdate())
+                   continue;
 
                 dirtySet.Add(behaviour);
             }
