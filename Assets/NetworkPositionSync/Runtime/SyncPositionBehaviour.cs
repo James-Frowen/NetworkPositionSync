@@ -104,7 +104,7 @@ namespace JamesFrowen.PositionSync
 
         [Tooltip("Client Authority Sync Interval")]
         [SerializeField] private float clientSyncRate = 20;
-        [SerializeField] private float ClientFixedSyncInterval => 1 / clientSyncRate;
+        private float ClientFixedSyncInterval => 1 / clientSyncRate;
 
         [Tooltip("Debugging")]
         [SerializeField] private bool showDebugGui = false;
