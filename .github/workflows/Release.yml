@@ -30,7 +30,7 @@ jobs:
       - name: Release
         # id so output can be used by other steps
         id: semantic 
-        uses: cycjimmy/semantic-release-action@v3
+        uses: cycjimmy/semantic-release-action@v4
         with:          
           extra_plugins: |
             @semantic-release/exec
