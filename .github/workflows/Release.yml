@@ -11,7 +11,7 @@ jobs:
       SOURCE_PATH: Assets/NetworkPositionSync
       # target path should be path inside unityPackage, should be inside asset folder
       TARGET_PATH: Assets/NetworkPositionSync
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - name: Setup dotnet
         uses: actions/setup-dotnet@v2
