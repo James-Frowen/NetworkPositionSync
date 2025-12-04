@@ -1,3 +1,10 @@
+## [9.0.2](https://github.com/James-Frowen/NetworkPositionSync/compare/v9.0.1...v9.0.2) (2025-12-04)
+
+
+### Bug Fixes
+
+* removing [SerializeField] from property ([8359d86](https://github.com/James-Frowen/NetworkPositionSync/commit/8359d862256ce9bf77939faf49fe7e62c770b7f9))
+
 ## [9.0.1](https://github.com/James-Frowen/NetworkPositionSync/compare/v9.0.0...v9.0.1) (2024-08-23)
 
 
