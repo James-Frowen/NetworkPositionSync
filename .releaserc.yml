@@ -12,7 +12,7 @@ plugins:
   # run prepareCmd after other steps so that changes are included in package
   - - '@semantic-release/exec'
     # See .release.sh for what files are included in release
-    - prepareCmd: "sh ./.release.sh ${nextRelease.version}"
+    - prepareCmd: "pwsh ./.release.ps1 ${nextRelease.version}" # run windows version of script instead
   - - '@semantic-release/git'
     - assets:
         - 'Assets/NetworkPositionSync/Runtime/AssemblyInfo.cs'
