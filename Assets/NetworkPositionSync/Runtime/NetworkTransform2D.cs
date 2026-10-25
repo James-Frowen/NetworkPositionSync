@@ -29,7 +29,7 @@ namespace Mirage.SyncPosition
 {
     public class NetworkTransform2D : NetworkTransformBase<NetworkTransform2D.Snapshot>
     {
-        [Tooltip("Set what values to use for position and rotation.\nworld use transform.position\nlocal uses transform.localPosition\nrelative uses (RelativeTo.position - transform.position)")]
+        [Tooltip("Set what values to use for position and rotation.\nworld use transform.position\nlocal uses transform.localPosition\nrelative uses position and rotation in RelativeTo's space (scale is ignored)")]
         [SerializeField] protected CoordinatesType _coordinatesType = new CoordinatesType { Space = Coordinates.World };
 
         [Header("Compression")]
@@ -67,8 +67,9 @@ namespace Mirage.SyncPosition
                     return new Snapshot(transform.localPosition, transform.localEulerAngles.z);
                 case Coordinates.Relative:
                     var other = _coordinatesType.RelativeTo;
-                    var relPos = other.position - transform.position;
-                    var relRot = other.eulerAngles.z - transform.eulerAngles.z;
+                    var otherAngle = other.eulerAngles.z;
+                    var relPos = Rotate(transform.position - other.position, -otherAngle);
+                    var relRot = transform.eulerAngles.z - otherAngle;
                     return new Snapshot(relPos, relRot);
             }
         }
@@ -93,10 +94,19 @@ namespace Mirage.SyncPosition
                     return;
                 case Coordinates.Relative:
                     var other = _coordinatesType.RelativeTo;
-                    transform.position = (Vector2)other.position + newSnapshot.Position;
-                    transform.eulerAngles = Vector3.forward * (other.eulerAngles.z + newSnapshot.Rotation);
+                    var otherAngle = other.eulerAngles.z;
+                    transform.position = (Vector2)other.position + Rotate(newSnapshot.Position, otherAngle);
+                    transform.eulerAngles = Vector3.forward * (otherAngle + newSnapshot.Rotation);
                     return;
             }
+        }
+
+        /// <summary>
+        /// Rotates a 2D vector around the z axis
+        /// </summary>
+        private static Vector2 Rotate(Vector2 vector, float angle)
+        {
+            return Quaternion.Euler(0, 0, angle) * vector;
         }
 
         protected override void WriteSnapshot(NetworkWriter writer, Snapshot snapshot)

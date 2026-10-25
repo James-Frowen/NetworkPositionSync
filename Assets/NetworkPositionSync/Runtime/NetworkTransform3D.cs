@@ -29,7 +29,7 @@ namespace Mirage.SyncPosition
 {
     public class NetworkTransform3D : NetworkTransformBase<NetworkTransform3D.Snapshot>
     {
-        [Tooltip("Set what values to use for position and rotation.\nworld use transform.position\nlocal uses transform.localPosition\nrelative uses (RelativeTo.position - transform.position)")]
+        [Tooltip("Set what values to use for position and rotation.\nworld use transform.position\nlocal uses transform.localPosition\nrelative uses position and rotation in RelativeTo's space (scale is ignored)")]
         [SerializeField] protected CoordinatesType _coordinatesType = new CoordinatesType { Space = Coordinates.World };
 
         [Header("Compression")]
@@ -66,9 +66,9 @@ namespace Mirage.SyncPosition
                     return new Snapshot(transform.localPosition, transform.localRotation);
                 case Coordinates.Relative:
                     var other = _coordinatesType.RelativeTo;
-                    var relPos = other.position - transform.position;
-                    // todo needs testing
-                    var relRot = Quaternion.Inverse(other.rotation) * transform.rotation;
+                    var inverseRot = Quaternion.Inverse(other.rotation);
+                    var relPos = inverseRot * (transform.position - other.position);
+                    var relRot = inverseRot * transform.rotation;
                     return new Snapshot(relPos, relRot);
             }
         }
@@ -93,7 +93,7 @@ namespace Mirage.SyncPosition
                     return;
                 case Coordinates.Relative:
                     var other = _coordinatesType.RelativeTo;
-                    transform.position = other.position + newSnapshot.Position;
+                    transform.position = other.position + (other.rotation * newSnapshot.Position);
                     transform.rotation = other.rotation * newSnapshot.Rotation;
                     return;
             }
