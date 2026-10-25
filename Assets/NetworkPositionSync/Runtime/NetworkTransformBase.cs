@@ -49,7 +49,8 @@ namespace Mirage.SyncPosition
         public abstract void WriteIfDirty(NetworkWriter headerWriter, PooledNetworkWriter dataWriter, bool includeWriteSize);
         public abstract void ClientUpdate(double viewTime, double removeTime);
 
-        public static void ReadAll(double insertTime, PooledNetworkReader metaReader, PooledNetworkReader dataReader, bool includeWriteSize)
+        /// <param name="sender">Player that sent the data, null if it came from the server. When not null, data is only applied to behaviours that player has client authority over</param>
+        public static void ReadAll(double insertTime, PooledNetworkReader metaReader, PooledNetworkReader dataReader, bool includeWriteSize, INetworkPlayer sender = null)
         {
             // assume 1 state is atleast 3 bytes
             // (it should be more, but there shouldn't be random left over bits in reader so 3 is enough for check)
@@ -58,6 +59,15 @@ namespace Mirage.SyncPosition
             while (metaReader.CanReadBytes(MIN_READ_SIZE))
             {
                 var behavior = metaReader.ReadNetworkBehaviour<NetworkTransformBase>();
+
+                // client can only send data for objects it owns and that use client authority
+                // treat anything else like an unknown object, so it is skipped
+                if (behavior != null && sender != null && !behavior.IsClientAuthorityFor(sender))
+                {
+                    if (logger.WarnEnabled()) logger.LogWarning($"Player {sender} sent position for {behavior.NetId} but does not have client authority over it");
+                    behavior = null;
+                }
+
                 if (includeWriteSize)
                 {
                     var size = (int)metaReader.ReadPackedUInt32();
@@ -82,6 +92,11 @@ namespace Mirage.SyncPosition
             }
         }
         protected abstract void ReadAndInsertSnapshot(NetworkReader reader, double insertTime);
+
+        private bool IsClientAuthorityFor(INetworkPlayer player)
+        {
+            return _clientAuthority && Owner == player;
+        }
     }
 
     public enum Coordinates

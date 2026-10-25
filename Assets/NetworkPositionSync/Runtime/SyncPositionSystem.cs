@@ -332,7 +332,7 @@ namespace Mirage.SyncPosition
             using (PooledNetworkReader metaReader = NetworkReaderPool.GetReader(msg.MetaPayload, Server.World),
                                        dataReader = NetworkReaderPool.GetReader(msg.DataPayload, Server.World))
             {
-                NetworkTransformBase.ReadAll(time, metaReader, dataReader, _includeWriteSize);
+                NetworkTransformBase.ReadAll(time, metaReader, dataReader, _includeWriteSize, player);
             }
         }
 
