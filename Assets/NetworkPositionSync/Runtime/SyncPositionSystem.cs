@@ -188,8 +188,17 @@ namespace Mirage.SyncPosition
                 _maxItemSize = Math.Max(_maxItemSize, behaviour.MaxWriteSize);
             }
         }
-        private void World_onUnspawn(NetworkIdentity identity)
+        private void World_onUnspawn(uint netId, NetworkIdentity identity)
         {
+            // onUnspawn can be called after the object has been destroyed by unity,
+            // in that case we can't get its components, so remove all destroyed behaviours instead
+            if (identity == null)
+            {
+                _behaviours.RemoveAll(IsDestroyed);
+                _clientAuthorityBehaviours.RemoveAll(IsDestroyed);
+                return;
+            }
+
             identity.gameObject.GetComponentsInChildren(true, _getCache);
             for (var i = 0; i < _getCache.Count; i++)
             {
@@ -197,6 +206,8 @@ namespace Mirage.SyncPosition
                 _clientAuthorityBehaviours.Remove(_getCache[i]);
             }
         }
+        // unity overrides == null to check if object is destroyed
+        private static bool IsDestroyed(NetworkTransformBase behaviour) => behaviour == null;
         private void World_onAuthorityChanged(NetworkIdentity identity, bool hasAuthority, INetworkPlayer owner)
         {
             // only needed for remote clients, host sends using the server's list
