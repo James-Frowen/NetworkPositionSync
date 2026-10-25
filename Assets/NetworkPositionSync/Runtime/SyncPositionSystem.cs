@@ -389,8 +389,8 @@ namespace Mirage.SyncPosition
             /// <summary>
             /// how close to MTU we can get before sending 2 message instead of 1
             /// </summary>
-            // msgId,time,payload sizes
-            public const int HEADER_SIZE = 2 + 4 + (2 * 2);
+            // msgId(ushort), time(double), payload sizes (packed, 3 bytes covers sizes up to 67k)
+            public const int HEADER_SIZE = 2 + 8 + (2 * 3);
 
             public double Time;
 
@@ -410,14 +410,15 @@ namespace Mirage.SyncPosition
 
             protected Send(int maxPacketSize)
             {
-                _maxPacketSize = maxPacketSize;
+                // Mirage adds a batch header to each unreliable message, it will throw if message+header is bigger than MaxPacketSize
+                _maxPacketSize = maxPacketSize - (1 + Batch.MESSAGE_LENGTH_SIZE);
             }
 
             protected bool IsFull(int maxItemSize, NetworkWriter metaWriter, NetworkWriter dataWriter)
             {
                 var current = metaWriter.ByteLength + dataWriter.ByteLength + PositionMessage.HEADER_SIZE;
-                // size of netid + compIndex + data length
-                const int maxMetaSize = 4 + 1 + 2;
+                // size of netid (packed uint, up to 5 bytes) + compIndex + data length (packed)
+                const int maxMetaSize = 5 + 1 + 3;
                 var next = current + maxMetaSize + maxItemSize;
 
                 return next > _maxPacketSize;
