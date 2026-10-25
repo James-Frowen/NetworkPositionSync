@@ -1,17 +1,47 @@
 using System;
+using System.Text.RegularExpressions;
 using Mirage.Logging;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 using RangeAttribute = NUnit.Framework.RangeAttribute;
 
-namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
+namespace Mirage.SyncPosition.Tests.SnapshotBufferTests
 {
     public class SnapshotBufferTestBase
     {
-        public static SnapshotBuffer<TransformState> CreateBuffer()
+        public static SnapshotBuffer<Snapshot> CreateBuffer()
         {
-            return new SnapshotBuffer<TransformState>(TransformState.CreateInterpolator());
+            return new SnapshotBuffer<Snapshot>(Snapshot.CreateInterpolator());
+        }
+
+        public struct Snapshot
+        {
+            public readonly Vector3 position;
+            public readonly Quaternion rotation;
+
+            public Snapshot(Vector3 position, Quaternion rotation)
+            {
+                this.position = position;
+                this.rotation = rotation;
+            }
+
+            public override string ToString()
+            {
+                return $"[{position}, {rotation}]";
+            }
+
+            public static ISnapshotInterpolator<Snapshot> CreateInterpolator() => new Interpolator();
+
+            private class Interpolator : ISnapshotInterpolator<Snapshot>
+            {
+                public Snapshot Lerp(Snapshot a, Snapshot b, float alpha)
+                {
+                    var pos = Vector3.Lerp(a.position, b.position, alpha);
+                    var rot = Quaternion.Slerp(a.rotation, b.rotation, alpha);
+                    return new Snapshot(pos, rot);
+                }
+            }
         }
     }
     [Category("NetworkPositionSync")]
@@ -106,13 +136,13 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
         [Test]
         public void ShouldReturnFirstIfOnly1Snapshot([Range(0, 10, 1f)] float now)
         {
-            var state = new TransformState(Vector3.one, Quaternion.identity);
+            var state = new Snapshot(Vector3.one, Quaternion.identity);
             var buffer = CreateBuffer();
             buffer.AddSnapShot(state, default);
 
-            using (new SetLogLevel<SnapshotBuffer<TransformState>>(LogType.Log))
+            using (new SetLogLevel<SnapshotBuffer<Snapshot>>(LogType.Log))
             {
-                LogAssert.Expect(LogType.Log, "First snapshot");
+                LogAssert.Expect(LogType.Log, new Regex(@"First snapshot$"));
                 var value = buffer.GetLinearInterpolation(now);
                 Assert.That(value, Is.EqualTo(state));
             }
@@ -123,16 +153,16 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
         {
             const float time1 = 1.1f;
             const float time2 = 1.5f;
-            var state1 = new TransformState(Vector3.one, Quaternion.identity);
-            var state2 = new TransformState(Vector3.one * 2, Quaternion.identity);
+            var state1 = new Snapshot(Vector3.one, Quaternion.identity);
+            var state2 = new Snapshot(Vector3.one * 2, Quaternion.identity);
 
             var buffer = CreateBuffer();
             buffer.AddSnapShot(state1, time1);
             buffer.AddSnapShot(state2, time2);
 
-            using (new SetLogLevel<SnapshotBuffer<TransformState>>(LogType.Log))
+            using (new SetLogLevel<SnapshotBuffer<Snapshot>>(LogType.Log))
             {
-                LogAssert.Expect(LogType.Log, $"No snapshots for t = {now:0.000}, using earliest t = {time1:0.000}");
+                LogAssert.Expect(LogType.Log, new Regex($"No snapshots for t = {now:0.000}, using earliest t = {time1:0.000}$"));
                 var value = buffer.GetLinearInterpolation(now);
                 Assert.That(value, Is.EqualTo(state1));
             }
@@ -143,16 +173,16 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
         {
             const float time1 = 1.1f;
             const float time2 = 1.5f;
-            var state1 = new TransformState(Vector3.one, Quaternion.identity);
-            var state2 = new TransformState(Vector3.one * 2, Quaternion.identity);
+            var state1 = new Snapshot(Vector3.one, Quaternion.identity);
+            var state2 = new Snapshot(Vector3.one * 2, Quaternion.identity);
 
             var buffer = CreateBuffer();
             buffer.AddSnapShot(state1, time1);
             buffer.AddSnapShot(state2, time2);
 
-            using (new SetLogLevel<SnapshotBuffer<TransformState>>(LogType.Log))
+            using (new SetLogLevel<SnapshotBuffer<Snapshot>>(LogType.Log))
             {
-                LogAssert.Expect(LogType.Log, $"No snapshots for t = {now:0.000}, using first t = {time1:0.000}, last t = {time2:0.000}");
+                LogAssert.Expect(LogType.Log, new Regex($"No snapshots for t = {now:0.000}, using first t = {time1:0.000}, last t = {time2:0.000}$"));
                 var value = buffer.GetLinearInterpolation(now);
                 Assert.That(value, Is.EqualTo(state2));
             }
@@ -163,9 +193,9 @@ namespace JamesFrowen.PositionSync.Tests.SnapshotBufferTests
         {
             const float time1 = 1f;
             const float time2 = 2f;
-            var state1 = new TransformState(Vector3.one, Quaternion.identity);
-            var state2 = new TransformState(Vector3.one * 2, Quaternion.identity);
-            var expected = new TransformState(Vector3.Lerp(state1.position, state2.position, now - time1), Quaternion.identity);
+            var state1 = new Snapshot(Vector3.one, Quaternion.identity);
+            var state2 = new Snapshot(Vector3.one * 2, Quaternion.identity);
+            var expected = new Snapshot(Vector3.Lerp(state1.position, state2.position, now - time1), Quaternion.identity);
 
             var buffer = CreateBuffer();
             buffer.AddSnapShot(state1, time1);

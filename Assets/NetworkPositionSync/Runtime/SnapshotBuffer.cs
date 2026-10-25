@@ -29,11 +29,11 @@ using System.Text;
 using Mirage.Logging;
 using UnityEngine;
 
-namespace JamesFrowen.PositionSync
+namespace Mirage.SyncPosition
 {
     public interface ISnapshotInterpolator<T>
     {
-        T Lerp(T a, T b, float alpha);
+        T Interpolate(double from, T a, double to, T b, float alpha);
     }
     public class SnapshotBuffer<T>
     {
@@ -51,6 +51,11 @@ namespace JamesFrowen.PositionSync
             {
                 this.state = state;
                 this.time = time;
+            }
+
+            public override string ToString()
+            {
+                return $"({time:0.000}s:{state})";
             }
         }
 
@@ -148,7 +153,7 @@ namespace JamesFrowen.PositionSync
                     // todo add trace log
                     if (logger.LogEnabled()) logger.Log($"alpha:{alpha:0.000}");
 
-                    return interpolator.Lerp(from.state, to.state, alpha);
+                    return interpolator.Interpolate(fromTime, from.state, toTime, to.state, alpha);
                 }
             }
 

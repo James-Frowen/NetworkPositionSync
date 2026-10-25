@@ -1,27 +1,24 @@
 using System.Collections;
 using Cysharp.Threading.Tasks;
-using Mirage;
 using Mirage.Tests;
+using Mirage.Tests.Runtime;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 
-namespace JamesFrowen.PositionSync.Tests.Runtime
+namespace Mirage.SyncPosition.Tests.Runtime
 {
     [Category("NetworkPositionSync")]
-    public class NetworkTransformSnapshotInterpolationTest : ClientServerSetup<SyncPositionBehaviour>
+    public class NetworkTransformSnapshotInterpolationTest : ClientServerSetup<NetworkTransform3D>
     {
-        public override void ExtraSetup()
+        protected override async UniTask ExtraSetup()
         {
-            base.ExtraSetup();
+            await base.ExtraSetup();
             var serverSystem = serverGo.AddComponent<SyncPositionSystem>();
             var clientSystem = clientGo.AddComponent<SyncPositionSystem>();
 
-            serverSystem.Server = server;
-            serverSystem.Awake();
-
-            clientSystem.Client = client;
-            clientSystem.Awake();
+            serverSystem.Setup(server: server);
+            clientSystem.Setup(client: client);
         }
 
 
@@ -47,29 +44,23 @@ namespace JamesFrowen.PositionSync.Tests.Runtime
     }
 
     [Category("NetworkPositionSync")]
-    public class MultipleBehavioursTest : ClientServerSetup<SyncPositionBehaviour>
+    public class MultipleBehavioursTest : ClientServerSetup<NetworkTransform3D>
     {
         private NetworkIdentity prefabWithMultiple;
         private NetworkIdentity serverObj;
         private NetworkIdentity clientObj;
 
-
-        public override void ExtraSetup()
+        protected override async UniTask ExtraSetup()
         {
-            base.ExtraSetup();
+            await base.ExtraSetup();
             var serverSystem = serverGo.AddComponent<SyncPositionSystem>();
             var clientSystem = clientGo.AddComponent<SyncPositionSystem>();
-            serverSystem.PackSettings.IncludeComponentIndex = true;
-            clientSystem.PackSettings.IncludeComponentIndex = true;
 
-            serverSystem.Server = server;
-            serverSystem.Awake();
-
-            clientSystem.Client = client;
-            clientSystem.Awake();
+            serverSystem.Setup(server: server);
+            clientSystem.Setup(client: client);
         }
 
-        public override async UniTask LateSetup()
+        protected override async UniTask LateSetup()
         {
             prefabWithMultiple = CreateNetworkIdentity();
             prefabWithMultiple.gameObject.SetActive(false); // disable to stop awake being called
@@ -78,9 +69,9 @@ namespace JamesFrowen.PositionSync.Tests.Runtime
             child1.transform.parent = prefabWithMultiple.transform;
             child2.transform.parent = prefabWithMultiple.transform;
 
-            prefabWithMultiple.gameObject.AddComponent<SyncPositionBehaviour>();
-            child1.AddComponent<SyncPositionBehaviour>();
-            child2.AddComponent<SyncPositionBehaviour>();
+            prefabWithMultiple.gameObject.AddComponent<NetworkTransform3D>();
+            child1.AddComponent<NetworkTransform3D>();
+            child2.AddComponent<NetworkTransform3D>();
 
             const int PrefabHash = 1000;
             clientObjectManager.RegisterPrefab(prefabWithMultiple, PrefabHash);

@@ -23,11 +23,10 @@ SOFTWARE.
 */
 
 using System.Runtime.CompilerServices;
-using Mirage;
 using Mirage.Logging;
 using UnityEngine;
 
-namespace JamesFrowen.PositionSync
+namespace Mirage.SyncPosition
 {
     /// <summary>
     /// Synchronizes time between server and client via regular messages between server and client.
@@ -94,7 +93,6 @@ namespace JamesFrowen.PositionSync
         /// If so, reset the client time.
         /// </summary>
         private readonly float _skipAheadThreshold;
-        private float _clientDelay;
 
         // Used for debug purposes. Move along...
         private double _latestServerTime;
@@ -116,27 +114,20 @@ namespace JamesFrowen.PositionSync
             get => _latestServerTime;
         }
 
-        [System.Obsolete("Use Time instead")]
-        public double InterpolationTimeField
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => Time;
-        }
-
         /// <summary>
         /// Current time to use for interpolation 
         /// </summary>
         public double Time
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _clientTime - _clientDelay;
+            get => _clientTime - ClientDelay;
         }
 
         public float ClientDelay
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _clientDelay;
-            set => _clientDelay = value;
+            get;
+            set;
         }
 
         // Used for debug purposes. Move along...
@@ -145,15 +136,15 @@ namespace JamesFrowen.PositionSync
         /// <param name="diffThreshold">How far off client time can be before changing its speed. A good recommended value is half of SyncInterval.</param>
         /// <param name="skipThreshold">How many ticks behind before skipping ahead to catch up</param>
         /// <param name="movingAverageCount">How many ticks are used for averaging purposes, you may need to increase or decrease with frame rate.</param>
-        public InterpolationTime(float tickInterval, float diffThreshold = 0.5f, float timeScale = 0.01f, float skipThreshold = 20f, float tickDelay = 2, int movingAverageCount = 30)
+        public InterpolationTime(float syncInterval, float diffThreshold = 0.5f, float timeScale = 0.01f, float skipThreshold = 20f, float tickDelay = 2, int movingAverageCount = 30)
         {
-            positiveThreshold = tickInterval * diffThreshold;
+            positiveThreshold = syncInterval * diffThreshold;
             negativeThreshold = -positiveThreshold;
-            _skipAheadThreshold = tickInterval * skipThreshold;
+            _skipAheadThreshold = syncInterval * skipThreshold;
 
             _scaleModifier = timeScale;
 
-            _clientDelay = tickInterval * tickDelay;
+            ClientDelay = syncInterval * tickDelay;
 
             diffAvg = new ExponentialMovingAverage(movingAverageCount);
 

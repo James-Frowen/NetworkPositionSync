@@ -1,5 +1,6 @@
 {
     "name": "JamesFrowen.PositionSync.Tests.Runtime",
+    "rootNamespace": "",
     "references": [
         "JamesFrowen.PositionSync",
         "UnityEngine.TestRunner",
@@ -7,7 +8,8 @@
         "Mirage",
         "UniTask",
         "Mirage.SocketLayer",
-        "Mirage.Tests.Common"
+        "Mirage.Tests.Common",
+        "Mirage.Tests.Runtime"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
