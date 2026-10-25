@@ -52,9 +52,9 @@ namespace Mirage.SyncPosition
         /// <param name="sender">Player that sent the data, null if it came from the server. When not null, data is only applied to behaviours that player has client authority over</param>
         public static void ReadAll(double insertTime, PooledNetworkReader metaReader, PooledNetworkReader dataReader, bool includeWriteSize, INetworkPlayer sender = null)
         {
-            // assume 1 state is atleast 3 bytes
-            // (it should be more, but there shouldn't be random left over bits in reader so 3 is enough for check)
-            const int MIN_READ_SIZE = 3;
+            // each entry in meta is atleast 2 bytes: netId (packed, 1 byte if <= 240) and componentIndex (1 byte)
+            // meta only contains whole bytes, so there are no left over bits that could be mistaken for an entry
+            const int MIN_READ_SIZE = 2;
 
             while (metaReader.CanReadBytes(MIN_READ_SIZE))
             {
