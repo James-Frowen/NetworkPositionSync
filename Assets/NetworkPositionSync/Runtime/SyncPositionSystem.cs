@@ -329,8 +329,8 @@ namespace Mirage.SyncPosition
                     if (logger.WarnEnabled()) logger.LogWarning($"Message from client arrived too late for host, msg:{time:0.000} hostTime:{InterpolationTime.ClientTime}");
             }
 
-            using (PooledNetworkReader metaReader = NetworkReaderPool.GetReader(msg.MetaPayload, Client.World),
-                                       dataReader = NetworkReaderPool.GetReader(msg.DataPayload, Client.World))
+            using (PooledNetworkReader metaReader = NetworkReaderPool.GetReader(msg.MetaPayload, Server.World),
+                                       dataReader = NetworkReaderPool.GetReader(msg.DataPayload, Server.World))
             {
                 NetworkTransformBase.ReadAll(time, metaReader, dataReader, _includeWriteSize);
             }
