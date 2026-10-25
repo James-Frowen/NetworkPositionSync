@@ -127,7 +127,8 @@ namespace Mirage.SyncPosition
             switch (_syncSettings.SyncMode)
             {
                 case SyncMode.SendToAll:
-                    _send = new SendAll(_behaviours, _maxPacketSize, sendIfEmpty: true, _includeWriteSize, (msg) => Server.SendToAll(msg, authenticatedOnly: true, excludeLocalPlayer: true, Channel.Unreliable));
+                    // note: not using SendToAll(authenticatedOnly: true) because it ignores the channel and sends reliable
+                    _send = new SendAll(_behaviours, _maxPacketSize, sendIfEmpty: true, _includeWriteSize, (msg) => Server.SendToMany(Server.AuthenticatedPlayers, msg, excludeLocalPlayer: true, Channel.Unreliable));
                     break;
                 case SyncMode.SendToObservers:
                     _send = new SendObservers(Server, _behaviours, _maxPacketSize, _includeWriteSize);
