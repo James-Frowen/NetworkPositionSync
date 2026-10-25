@@ -27,6 +27,7 @@ using UnityEngine;
 
 namespace Mirage.SyncPosition
 {
+    [AddComponentMenu("Network/SyncPosition/NetworkTransform3D")]
     public class NetworkTransform3D : NetworkTransformBase<NetworkTransform3D.Snapshot>
     {
         [Tooltip("Set what values to use for position and rotation.\nworld use transform.position\nlocal uses transform.localPosition\nrelative uses position and rotation in RelativeTo's space (scale is ignored)")]
