@@ -22,7 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+using System;
 using Mirage.Logging;
+using Mirage.RemoteCalls;
 using Mirage.Serialization;
 using UnityEngine;
 
@@ -30,6 +32,10 @@ namespace Mirage.SyncPosition
 {
     /// <summary>
     /// non generic base class that can be used too call functions from outside
+    /// <para>
+    /// If there is a <see cref="SyncPositionSystem"/> then it will sync this behaviour, batching the changes from many objects into a few messages.
+    /// If there is no system then this behaviour syncs itself using RPCs (standalone mode).
+    /// </para>
     /// </summary>
     public abstract class NetworkTransformBase : NetworkBehaviour
     {
@@ -48,15 +54,41 @@ namespace Mirage.SyncPosition
             set => _clientAuthority = value;
         }
 
+        [Header("Standalone")]
+        [Tooltip("Only used when there is no SyncPositionSystem.\nHow often changes are sent")]
+        [SerializeField] internal float _standaloneSyncInterval = 0.1f;
+        [Tooltip("Only used when there is no SyncPositionSystem.\nDelay client uses so that it always has snapshots to interpolate between. Multiple of sync interval")]
+        [SerializeField] internal float _standaloneInterpolationDelay = 2.5f;
+
+        /// <summary>
+        /// System that syncs this behaviour. If null then this behaviour syncs itself using RPCs
+        /// </summary>
+        internal SyncPositionSystem _system;
+
+        /// <summary>
+        /// True if this behaviour syncs itself using RPCs, false if it is synced by a <see cref="SyncPositionSystem"/>
+        /// </summary>
+        public bool IsStandalone => _system == null;
+
         /// <summary>
         /// Max possible size of write. Need to know if message needs to be split up
         /// </summary>
         public abstract int MaxWriteSize { get; }
         /// <summary>
-        /// Called once this behaviour is added to <see cref="SyncPositionSystem"/>. Which will happen from the <see cref="NetworkWorld.onSpawn"/> event.
+        /// Called once when this behaviour starts syncing after it is spawned.
+        /// <para>By <see cref="SyncPositionSystem"/> from the <see cref="NetworkWorld.onSpawn"/> event, or in standalone mode on the first update or message after spawning</para>
         /// </summary>
         public virtual void Setup() { }
         public abstract void WriteIfDirty(NetworkWriter headerWriter, PooledNetworkWriter dataWriter, bool includeWriteSize);
+        /// <summary>
+        /// Writes the snapshot if it has changed since it was last written
+        /// </summary>
+        /// <returns>true if snapshot was written</returns>
+        public abstract bool WriteChanged(NetworkWriter writer);
+        /// <summary>
+        /// Makes next <see cref="WriteChanged"/> write even if unchanged, eg because last write was not sent
+        /// </summary>
+        public abstract void ForceNextWrite();
         public abstract void ClientUpdate(double viewTime, double removeTime);
 
         /// <summary>
@@ -115,6 +147,185 @@ namespace Mirage.SyncPosition
         {
             return _clientAuthority && Owner == player;
         }
+
+        #region Standalone
+        /// <summary>
+        /// NetId when standalone state was last reset, used to detect when object is spawned again (eg when pooled)
+        /// </summary>
+        private uint _standaloneNetId;
+        private double _standaloneNextSyncTime;
+        private double _standalonePreviousTime;
+
+        /// <summary>
+        /// Clock that follows server time, used by remote clients to interpolate
+        /// </summary>
+        internal InterpolationTime _standaloneTime;
+
+        /// <summary>
+        /// Time of last <see cref="CmdSnapshot"/>, used to drop messages that arrive out of order
+        /// </summary>
+        private double _lastCmdTime;
+        private INetworkPlayer _lastCmdOwner;
+
+        private float StandaloneDelay => _standaloneSyncInterval * _standaloneInterpolationDelay;
+
+        /// <summary>
+        /// Sends and interpolates in standalone mode. Does nothing when synced by <see cref="SyncPositionSystem"/>
+        /// <para>Call base.Update() if overriding</para>
+        /// </summary>
+        protected virtual void Update()
+        {
+            if (!IsStandalone || !Identity.IsSpawned)
+                return;
+
+            EnsureStandaloneStarted();
+
+            var now = Time.unscaledTimeAsDouble;
+            if (IsClient)
+                StandaloneInterpolate(now);
+
+            if (now > _standaloneNextSyncTime)
+            {
+                _standaloneNextSyncTime = now + _standaloneSyncInterval;
+                StandaloneSend(now);
+            }
+        }
+
+        private void EnsureStandaloneStarted()
+        {
+            // netId will be different each time object is spawned
+            if (_standaloneNetId == NetId)
+                return;
+
+            _standaloneNetId = NetId;
+            _standaloneNextSyncTime = 0;
+            _standalonePreviousTime = Time.unscaledTimeAsDouble;
+            _standaloneTime = new InterpolationTime(_standaloneSyncInterval, tickDelay: _standaloneInterpolationDelay);
+            _lastCmdTime = 0;
+            _lastCmdOwner = null;
+            Setup();
+        }
+
+        private void StandaloneInterpolate(double now)
+        {
+            double viewTime;
+            if (IsServer)
+            {
+                // host: snapshots from clients are inserted using local time, so can just use local time for interpolation
+                viewTime = now - StandaloneDelay;
+            }
+            else
+            {
+                var deltaTime = now - _standalonePreviousTime;
+                _standalonePreviousTime = now;
+                _standaloneTime.OnUpdate((float)deltaTime);
+                viewTime = _standaloneTime.Time;
+            }
+
+            ClientUpdate(viewTime, viewTime - (StandaloneDelay * 1.5f));
+        }
+
+        private void StandaloneSend(double now)
+        {
+            using (var writer = NetworkWriterPool.GetWriter())
+            {
+                if (!WriteChanged(writer))
+                    return;
+
+                var payload = writer.ToArraySegment();
+                if (IsServer)
+                {
+                    // owner of client authority object doesn't need its own position
+                    if (_clientAuthority && Owner != null)
+                        RpcSnapshotExcludeOwner(now, payload);
+                    else
+                        RpcSnapshot(now, payload);
+                }
+                else
+                {
+                    // only the owner of a client authority object will have written anything
+                    // time is client's local time, only used by server to drop old messages
+                    try
+                    {
+                        CmdSnapshot(now, payload);
+                    }
+                    catch (ReturnRpcException e)
+                    {
+                        // Mirage checks the RateLimit on the client too, and throws instead of sending.
+                        // make sure the next write sends, otherwise if the object stopped moving its final position would never be sent
+                        if (logger.WarnEnabled()) logger.LogWarning($"Position for {NetId} not sent: {e.Message}");
+                        ForceNextWrite();
+                    }
+                }
+            }
+        }
+
+        [ClientRpc(channel = Channel.Unreliable, excludeHost = true)]
+        private void RpcSnapshot(double serverTime, ArraySegment<byte> payload)
+        {
+            ClientReceiveSnapshot(serverTime, payload);
+        }
+
+        [ClientRpc(channel = Channel.Unreliable, excludeHost = true, excludeOwner = true)]
+        private void RpcSnapshotExcludeOwner(double serverTime, ArraySegment<byte> payload)
+        {
+            ClientReceiveSnapshot(serverTime, payload);
+        }
+
+        private void ClientReceiveSnapshot(double serverTime, ArraySegment<byte> payload)
+        {
+            // client has a system, but server didn't. Ignore because they are not set up the same
+            if (!IsStandalone)
+                return;
+
+            EnsureStandaloneStarted();
+
+            // unreliable messages can arrive out of order, ignore old ones
+            if (serverTime <= _standaloneTime.LatestServerTime)
+                return;
+
+            using (var reader = NetworkReaderPool.GetReader(payload, World))
+            {
+                ReadAndInsertSnapshot(reader, serverTime);
+            }
+            _standaloneTime.OnMessage(serverTime);
+        }
+
+        // RateLimit is for each player, shared between all objects they own.
+        // 200 per second allows eg 10 objects at 20 updates per second. Use SyncPositionSystem if more is needed, it sends batched messages instead
+        [ServerRpc(channel = Channel.Unreliable)]
+        [RateLimit(Interval = 1, Refill = 200, MaxTokens = 400, Penalty = 1)]
+        private void CmdSnapshot(double clientTime, ArraySegment<byte> payload)
+        {
+            // ServerRpc already checks that sender is owner (requireAuthority)
+            if (!_clientAuthority)
+            {
+                if (logger.WarnEnabled()) logger.LogWarning($"Player {Owner} sent position for {NetId} but it does not use client authority");
+                Owner.SetError(NO_AUTHORITY_ERROR_COST, PlayerErrorFlags.NoAuthority);
+                return;
+            }
+
+            // new owner will have a different clock
+            if (_lastCmdOwner != Owner)
+            {
+                _lastCmdOwner = Owner;
+                _lastCmdTime = double.MinValue;
+            }
+
+            // unreliable messages can arrive out of order, ignore old ones
+            if (clientTime <= _lastCmdTime)
+                return;
+            _lastCmdTime = clientTime;
+
+            EnsureStandaloneStarted();
+
+            // insert using server time, client time is not linked to server time
+            using (var reader = NetworkReaderPool.GetReader(payload, World))
+            {
+                ReadAndInsertSnapshot(reader, Time.unscaledTimeAsDouble);
+            }
+        }
+        #endregion
     }
 
     public enum Coordinates
@@ -147,6 +358,7 @@ namespace Mirage.SyncPosition
         /// </summary>
         private bool IsLocalClientInControl => _clientAuthority && HasAuthority;
 
+        private bool _forceNextWrite;
         private bool _hasClientAuthoritySnapshot;
         private T _clientAuthoritySnapshot;
 
@@ -254,14 +466,11 @@ namespace Mirage.SyncPosition
 
         public sealed override void WriteIfDirty(NetworkWriter metaWriter, PooledNetworkWriter dataWriter, bool includeWriteSize)
         {
-            if (!GetChangedSnapShot(out var newSnapshot))
+            var startPos = dataWriter.BitPosition;
+            if (!WriteChanged(dataWriter))
                 return;
 
-            _snapshot = newSnapshot;
-
             metaWriter.WriteNetworkBehaviour(this);
-            var startPos = dataWriter.BitPosition;
-            WriteSnapshot(dataWriter, _snapshot);
 
             // TODO use c# object as proxy instead of sending size
             //      we can then leave that project in the object dictionary for 1-2 seconds after it is destroyed so that we can continue to read the data
@@ -271,6 +480,22 @@ namespace Mirage.SyncPosition
                 var size = endPos - startPos;
                 metaWriter.WritePackedUInt32((uint)size);
             }
+        }
+
+        public sealed override bool WriteChanged(NetworkWriter writer)
+        {
+            if (!GetChangedSnapShot(out var newSnapshot))
+                return false;
+
+            _snapshot = newSnapshot;
+            _forceNextWrite = false;
+            WriteSnapshot(writer, _snapshot);
+            return true;
+        }
+
+        public sealed override void ForceNextWrite()
+        {
+            _forceNextWrite = true;
         }
 
         private bool GetChangedSnapShot(out T snapshot)
@@ -303,7 +528,7 @@ namespace Mirage.SyncPosition
             }
             else
             {
-                return CreateSnapshot(out snapshot, false);
+                return CreateSnapshot(out snapshot, _forceNextWrite);
             }
         }
 

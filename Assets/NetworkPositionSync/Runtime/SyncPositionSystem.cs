@@ -160,14 +160,25 @@ namespace Mirage.SyncPosition
                 return;
 
             _send = null;
-            _behaviours.Clear();
+            ClearBehaviours();
             _clientAuthorityBehaviours.Clear();
+        }
+
+        private void ClearBehaviours()
+        {
+            foreach (var behaviour in _behaviours)
+            {
+                // check for destroyed objects
+                if (behaviour != null)
+                    behaviour._system = null;
+            }
+            _behaviours.Clear();
         }
 
         private void ServerStopped()
         {
             _send = null;
-            _behaviours.Clear();
+            ClearBehaviours();
         }
 
         private void AddWorldEvents(NetworkWorld world)
@@ -184,6 +195,8 @@ namespace Mirage.SyncPosition
             {
                 var behaviour = _getCache[i];
                 _behaviours.Add(behaviour);
+                // tells behaviour not to sync itself
+                behaviour._system = this;
                 behaviour.Setup();
                 _maxItemSize = Math.Max(_maxItemSize, behaviour.MaxWriteSize);
             }
@@ -202,6 +215,7 @@ namespace Mirage.SyncPosition
             identity.gameObject.GetComponentsInChildren(true, _getCache);
             for (var i = 0; i < _getCache.Count; i++)
             {
+                _getCache[i]._system = null;
                 _behaviours.Remove(_getCache[i]);
                 _clientAuthorityBehaviours.Remove(_getCache[i]);
             }
