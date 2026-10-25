@@ -179,11 +179,15 @@ namespace Mirage.SyncPosition
         {
             identity.gameObject.GetComponentsInChildren(true, _getCache);
             for (var i = 0; i < _getCache.Count; i++)
+            {
                 _behaviours.Remove(_getCache[i]);
+                _clientAuthorityBehaviours.Remove(_getCache[i]);
+            }
         }
         private void World_onAuthorityChanged(NetworkIdentity identity, bool hasAuthority, INetworkPlayer owner)
         {
-            if (!ClientActive)
+            // only needed for remote clients, host sends using the server's list
+            if (!ClientActive || ServerActive)
                 return;
 
             identity.gameObject.GetComponentsInChildren(true, _getCache);
@@ -199,8 +203,9 @@ namespace Mirage.SyncPosition
             }
             else
             {
+                // stop sending, behaviour stays in _behaviours so it will interpolate snapshots from server again
                 for (var i = 0; i < _getCache.Count; i++)
-                    _behaviours.Remove(_getCache[i]);
+                    _clientAuthorityBehaviours.Remove(_getCache[i]);
             }
         }
 
