@@ -41,14 +41,10 @@ namespace Mirage.SyncPosition
         //      it is fine to overestimate for now
         public override int MaxWriteSize => 4 * 3; // snapshot is 3 floats
 
-        private VarVector2Packer _positionPacker;
-        private AnglePacker _rotationPacker;
-
-        public override void Setup()
-        {
-            _positionPacker = _packSettings.GetPositionPacker();
-            _rotationPacker = _packSettings.GetRotationPacker();
-        }
+        // get packers when used, instead of in Setup, so that snapshots can be read before Setup is called (eg from spawn payload)
+        // packers are cached on PackSettings so this is cheap
+        private VarVector2Packer PositionPacker => _packSettings.GetPositionPacker();
+        private AnglePacker RotationPacker => _packSettings.GetRotationPacker();
 
         protected override bool CreateSnapshot(out Snapshot newSnapshot, bool force)
         {
@@ -115,15 +111,15 @@ namespace Mirage.SyncPosition
 
         protected override void WriteSnapshot(NetworkWriter writer, Snapshot snapshot)
         {
-            _positionPacker.Pack(writer, snapshot.Position);
-            _rotationPacker.Pack(writer, snapshot.Rotation);
+            PositionPacker.Pack(writer, snapshot.Position);
+            RotationPacker.Pack(writer, snapshot.Rotation);
         }
 
         protected override Snapshot ReadSnapshot(NetworkReader reader)
         {
             return new Snapshot(
-                _positionPacker.Unpack(reader),
-                _rotationPacker.Unpack(reader));
+                PositionPacker.Unpack(reader),
+                RotationPacker.Unpack(reader));
         }
 
         protected override ISnapshotInterpolator<Snapshot> CreateInterpolator() => new Interpolator();
