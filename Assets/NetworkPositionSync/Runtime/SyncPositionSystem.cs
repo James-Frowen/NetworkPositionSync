@@ -110,18 +110,21 @@ namespace Mirage.SyncPosition
             if (ServerActive)
                 return;
 
+            // set before creating _send, it is passed into its constructor
+            _maxPacketSize = Client.SocketFactory.MaxPacketSize;
             _send = new SendAll(_clientAuthorityBehaviours, _maxPacketSize, sendIfEmpty: false, _includeWriteSize, (msg) => Client.Send(msg, Channel.Unreliable));
 
             // reset time when starting
             _nextSyncTime = Time.unscaledTime - _syncSettings.SyncInterval;
 
-            _maxPacketSize = Client.SocketFactory.MaxPacketSize;
             AddWorldEvents(Client.World);
             Client.MessageHandler.RegisterHandler<PositionMessage>(ClientHandleNetworkPositionMessage);
         }
 
         private void ServerStarted()
         {
+            // set before creating _send, it is passed into its constructor
+            _maxPacketSize = Server.SocketFactory.MaxPacketSize;
             switch (_syncSettings.SyncMode)
             {
                 case SyncMode.SendToAll:
@@ -135,7 +138,6 @@ namespace Mirage.SyncPosition
             // reset time when starting
             _nextSyncTime = Time.unscaledTime - _syncSettings.SyncInterval;
 
-            _maxPacketSize = Server.SocketFactory.MaxPacketSize;
             AddWorldEvents(Server.World);
             Server.MessageHandler.RegisterHandler<PositionMessage>(ServerHandleNetworkPositionMessage);
         }
