@@ -124,6 +124,11 @@ namespace Mirage.SyncPosition
         protected T _snapshot;
         protected internal SnapshotBuffer<T> _snapshotBuffer;
 
+        /// <summary>
+        /// Is this client the owner of an object using client authority
+        /// </summary>
+        private bool IsLocalClientInControl => _clientAuthority && HasAuthority;
+
         private bool _hasClientAuthoritySnapshot;
         private T _clientAuthoritySnapshot;
 
@@ -177,6 +182,11 @@ namespace Mirage.SyncPosition
 
             if (IsClient)
             {
+                // server also sends client authority objects back to their owner,
+                // owner is in control so ignore them, otherwise buffer will grow forever because ClientUpdate doesn't remove them
+                if (IsLocalClientInControl)
+                    return;
+
                 // insert a snapshot so that we have a starting point
                 // time isn't important, just has to be before serverTime
                 if (_snapshotBuffer.IsEmpty)
@@ -219,7 +229,7 @@ namespace Mirage.SyncPosition
         {
             // client can only send objects that it controls,
             // checked here (instead of when adding to send list) so it is correct even if authority or _clientAuthority changes
-            if (!IsServer && !(_clientAuthority && HasAuthority))
+            if (!IsServer && !IsLocalClientInControl)
             {
                 snapshot = default;
                 return false;
@@ -251,9 +261,8 @@ namespace Mirage.SyncPosition
 
         public sealed override void ClientUpdate(double viewTime, double removeTime)
         {
-            var localOwner = _clientAuthority && HasAuthority;
             // only run Interpolation for remote owner
-            if (localOwner)
+            if (IsLocalClientInControl)
                 return;
 
             if (_snapshotBuffer.IsEmpty)
