@@ -114,8 +114,7 @@ namespace Mirage.SyncPosition
             _maxPacketSize = Client.SocketFactory.MaxPacketSize;
             _send = new SendAll(_clientAuthorityBehaviours, _maxPacketSize, sendIfEmpty: false, _includeWriteSize, (msg) => Client.Send(msg, Channel.Unreliable));
 
-            // reset time when starting
-            _nextSyncTime = Time.unscaledTime - _syncSettings.SyncInterval;
+            ResetTime();
 
             AddWorldEvents(Client.World);
             Client.MessageHandler.RegisterHandler<PositionMessage>(ClientHandleNetworkPositionMessage);
@@ -135,11 +134,22 @@ namespace Mirage.SyncPosition
                     break;
             }
 
-            // reset time when starting
-            _nextSyncTime = Time.unscaledTime - _syncSettings.SyncInterval;
+            ResetTime();
 
             AddWorldEvents(Server.World);
             Server.MessageHandler.RegisterHandler<PositionMessage>(ServerHandleNetworkPositionMessage);
+        }
+
+        /// <summary>
+        /// Reset time when starting, incase this is not the first time server/client has started
+        /// </summary>
+        private void ResetTime()
+        {
+            _nextSyncTime = Time.unscaledTime - _syncSettings.SyncInterval;
+            // so the first deltaTime is not the whole time since the game started
+            _previousTime = Time.unscaledTimeAsDouble;
+            // so the first message from the new server initializes time again, instead of being ignored as old
+            InterpolationTime.Reset();
         }
 
         private void ClientStopped(ClientStoppedReason arg0)
