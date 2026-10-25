@@ -85,21 +85,25 @@ namespace Mirage.SyncPosition
             {
                 default:
                 case Coordinates.World:
-                    transform.position = newSnapshot.Position;
-                    transform.eulerAngles = Vector3.forward * newSnapshot.Rotation;
+                    transform.position = WithXY(transform.position, newSnapshot.Position);
+                    transform.eulerAngles = WithZ(transform.eulerAngles, newSnapshot.Rotation);
                     return;
                 case Coordinates.Local:
-                    transform.localPosition = newSnapshot.Position;
-                    transform.localEulerAngles = Vector3.forward * newSnapshot.Rotation;
+                    transform.localPosition = WithXY(transform.localPosition, newSnapshot.Position);
+                    transform.localEulerAngles = WithZ(transform.localEulerAngles, newSnapshot.Rotation);
                     return;
                 case Coordinates.Relative:
                     var other = _coordinatesType.RelativeTo;
                     var otherAngle = other.eulerAngles.z;
-                    transform.position = (Vector2)other.position + Rotate(newSnapshot.Position, otherAngle);
-                    transform.eulerAngles = Vector3.forward * (otherAngle + newSnapshot.Rotation);
+                    transform.position = WithXY(transform.position, (Vector2)other.position + Rotate(newSnapshot.Position, otherAngle));
+                    transform.eulerAngles = WithZ(transform.eulerAngles, otherAngle + newSnapshot.Rotation);
                     return;
             }
         }
+
+        // only x/y position and z rotation are synced, keep the other values that are already on the transform
+        private static Vector3 WithXY(Vector3 current, Vector2 xy) => new Vector3(xy.x, xy.y, current.z);
+        private static Vector3 WithZ(Vector3 current, float z) => new Vector3(current.x, current.y, z);
 
         /// <summary>
         /// Rotates a 2D vector around the z axis
