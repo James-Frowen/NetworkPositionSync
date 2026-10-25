@@ -217,6 +217,14 @@ namespace Mirage.SyncPosition
 
         private bool GetChangedSnapShot(out T snapshot)
         {
+            // client can only send objects that it controls,
+            // checked here (instead of when adding to send list) so it is correct even if authority or _clientAuthority changes
+            if (!IsServer && !(_clientAuthority && HasAuthority))
+            {
+                snapshot = default;
+                return false;
+            }
+
             // if client auth, then we dont need to create and check if snapshot is changed,
             // server can just forward it
             if (_clientAuthority && Owner != null && Owner != Server.LocalPlayer)

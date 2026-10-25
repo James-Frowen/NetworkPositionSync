@@ -190,7 +190,12 @@ namespace Mirage.SyncPosition
             if (hasAuthority)
             {
                 for (var i = 0; i < _getCache.Count; i++)
-                    _clientAuthorityBehaviours.Add(_getCache[i]);
+                {
+                    // only behaviours with _clientAuthority will write anything, see GetChangedSnapShot
+                    var behaviour = _getCache[i];
+                    if (!_clientAuthorityBehaviours.Contains(behaviour))
+                        _clientAuthorityBehaviours.Add(behaviour);
+                }
             }
             else
             {
