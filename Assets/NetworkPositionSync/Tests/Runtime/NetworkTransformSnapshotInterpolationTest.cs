@@ -1,7 +1,6 @@
 using System.Collections;
 using Cysharp.Threading.Tasks;
 using Mirage.Tests;
-using Mirage.Tests.Runtime;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -9,19 +8,8 @@ using UnityEngine.TestTools;
 namespace Mirage.SyncPosition.Tests.Runtime
 {
     [Category("NetworkPositionSync")]
-    public class NetworkTransformSnapshotInterpolationTest : ClientServerSetup<NetworkTransform3D>
+    public class NetworkTransformSnapshotInterpolationTest : SyncPositionTestBase<NetworkTransform3D>
     {
-        protected override async UniTask ExtraSetup()
-        {
-            await base.ExtraSetup();
-            var serverSystem = serverGo.AddComponent<SyncPositionSystem>();
-            var clientSystem = clientGo.AddComponent<SyncPositionSystem>();
-
-            serverSystem.Setup(server: server);
-            clientSystem.Setup(client: client);
-        }
-
-
         [UnityTest]
         public IEnumerator SyncPositionFromServerToClient()
         {
@@ -35,35 +23,29 @@ namespace Mirage.SyncPosition.Tests.Runtime
             foreach (var position in positions)
             {
                 serverComponent.transform.position = position;
-                // wait more than needed to check end position is reached
-                yield return new WaitForSeconds(0.5f);
 
-                Assert.That(clientComponent.transform.position, Is.EqualTo(position));
+                yield return SyncPositionTestHelpers.WaitUntil(() => SyncPositionTestHelpers.Approximately(clientComponent.transform.position, position), Timeout);
+
+                Assert.That(SyncPositionTestHelpers.Approximately(clientComponent.transform.position, position), Is.True,
+                    $"Client position should be {position} but was {clientComponent.transform.position}");
             }
+
+            errorLogs.AssertNoErrors();
         }
     }
 
     [Category("NetworkPositionSync")]
-    public class MultipleBehavioursTest : ClientServerSetup<NetworkTransform3D>
+    public class MultipleBehavioursTest : SyncPositionTestBase<NetworkTransform3D>
     {
         private NetworkIdentity prefabWithMultiple;
         private NetworkIdentity serverObj;
         private NetworkIdentity clientObj;
 
-        protected override async UniTask ExtraSetup()
-        {
-            await base.ExtraSetup();
-            var serverSystem = serverGo.AddComponent<SyncPositionSystem>();
-            var clientSystem = clientGo.AddComponent<SyncPositionSystem>();
-
-            serverSystem.Setup(server: server);
-            clientSystem.Setup(client: client);
-        }
-
         protected override async UniTask LateSetup()
         {
-            prefabWithMultiple = CreateNetworkIdentity();
-            prefabWithMultiple.gameObject.SetActive(false); // disable to stop awake being called
+            await base.LateSetup();
+
+            prefabWithMultiple = CreateNetworkIdentity(disable: true); // disable to stop awake being called
             var child1 = new GameObject("Child 1");
             var child2 = new GameObject("Child 2");
             child1.transform.parent = prefabWithMultiple.transform;
@@ -76,8 +58,7 @@ namespace Mirage.SyncPosition.Tests.Runtime
             const int PrefabHash = 1000;
             clientObjectManager.RegisterPrefab(prefabWithMultiple, PrefabHash);
 
-            serverObj = GameObject.Instantiate(prefabWithMultiple);
-            serverObj.gameObject.SetActive(true);
+            serverObj = InstantiateForTest(prefabWithMultiple);
             serverObjectManager.Spawn(serverObj, PrefabHash);
             var netId = serverObj.NetId;
 
@@ -96,13 +77,19 @@ namespace Mirage.SyncPosition.Tests.Runtime
             serverChild1.localPosition = child1Pos;
             serverChild2.localPosition = child2Pos;
 
-            yield return new WaitForSeconds(0.5f);
-
             var clientChild1 = clientObj.transform.Find($"Child 1");
             var clientChild2 = clientObj.transform.Find($"Child 2");
-            Assert.That(clientObj.transform.localPosition, Is.EqualTo(rootPos));
-            Assert.That(clientChild1.localPosition, Is.EqualTo(child1Pos));
-            Assert.That(clientChild2.localPosition, Is.EqualTo(child2Pos));
+
+            yield return SyncPositionTestHelpers.WaitUntil(() =>
+                SyncPositionTestHelpers.Approximately(clientObj.transform.localPosition, rootPos)
+                && SyncPositionTestHelpers.Approximately(clientChild1.localPosition, child1Pos)
+                && SyncPositionTestHelpers.Approximately(clientChild2.localPosition, child2Pos), Timeout);
+
+            Assert.That(SyncPositionTestHelpers.Approximately(clientObj.transform.localPosition, rootPos), Is.True, $"root was {clientObj.transform.localPosition}");
+            Assert.That(SyncPositionTestHelpers.Approximately(clientChild1.localPosition, child1Pos), Is.True, $"child 1 was {clientChild1.localPosition}");
+            Assert.That(SyncPositionTestHelpers.Approximately(clientChild2.localPosition, child2Pos), Is.True, $"child 2 was {clientChild2.localPosition}");
+
+            errorLogs.AssertNoErrors();
         }
     }
 }

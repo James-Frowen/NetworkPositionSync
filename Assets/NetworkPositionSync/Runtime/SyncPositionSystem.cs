@@ -50,7 +50,7 @@ namespace Mirage.SyncPosition
         [SerializeField] private Settings _syncSettings = Settings.Default;
 
         [Tooltip("Sends write size with behaviour data. This will increase bandwidth, but avoids problems when a behaviour is not found when reading.")]
-        [SerializeField] private bool _includeWriteSize = true;
+        [SerializeField] internal bool _includeWriteSize = true;
 
         private int _maxItemSize;
 

@@ -34,13 +34,18 @@ namespace Mirage.SyncPosition.Tests.Runtime
         {
             OnSetup?.Invoke();
         }
-        protected override Data CreateSnapshot()
+        protected override bool CreateSnapshot(out Data newSnapshot, bool force)
         {
-            var snapshot = new Data { Value = Value };
+            newSnapshot = new Data { Value = Value };
 
-            if (logger.LogEnabled()) logger.Log($"{Time.time}:{name} CreateSnapshot {snapshot.Value}");
+            if (logger.LogEnabled()) logger.Log($"{Time.time}:{name} CreateSnapshot {newSnapshot.Value}");
             OnCreateSnapshot?.Invoke();
-            return snapshot;
+
+            var changed = newSnapshot.Value != _snapshot.Value;
+            if (logger.LogEnabled()) logger.Log($"{Time.time}:{name} HasChanged {changed} old:{_snapshot.Value} new:{newSnapshot.Value}");
+            OnHasChanged?.Invoke();
+
+            return force || changed;
         }
 
         protected override void ApplySnapshot(Data newSnapshot)
@@ -51,21 +56,11 @@ namespace Mirage.SyncPosition.Tests.Runtime
             OnApplySnapshot?.Invoke();
         }
 
-
-        protected override bool HasChanged(Data newSnapshot)
+        protected override void WriteSnapshot(NetworkWriter writer, Data snapshot)
         {
-            var changed = newSnapshot.Value != _snapshot.Value;
+            writer.Write(snapshot);
 
-            if (logger.LogEnabled()) logger.Log($"{Time.time}:{name} HasChanged {changed} old:{_snapshot.Value} new:{newSnapshot.Value}");
-            OnHasChanged?.Invoke();
-            return changed;
-        }
-
-        protected override void WriteSnapshot(NetworkWriter writer)
-        {
-            writer.Write(_snapshot);
-
-            if (logger.LogEnabled()) logger.Log($"{Time.time}:{name} WriteSnapshot {_snapshot.Value}");
+            if (logger.LogEnabled()) logger.Log($"{Time.time}:{name} WriteSnapshot {snapshot.Value}");
             OnWriteSnapshot?.Invoke();
         }
         protected override Data ReadSnapshot(NetworkReader reader)
@@ -96,7 +91,7 @@ namespace Mirage.SyncPosition.Tests.Runtime
 
         public class DataInterpolator : ISnapshotInterpolator<Data>
         {
-            public Data Lerp(Data a, Data b, float alpha)
+            public Data Interpolate(double from, Data a, double to, Data b, float alpha)
             {
                 return new Data
                 {
@@ -115,13 +110,15 @@ namespace Mirage.SyncPosition.Tests.Runtime
         protected override int RemoteClientCount => 2;
 
         private SyncPositionSystem serverSystem;
-        private List<SyncPositionSystem> clientSystem = new List<SyncPositionSystem>();
+        private readonly List<SyncPositionSystem> clientSystem = new List<SyncPositionSystem>();
 
         // objects on server
         private MockNetworkTransform _serverOwned;
 
         public SyncPositionSystem.Settings Settings;
-        private List<ClientTestState> _previousClientValues = new List<ClientTestState>();
+        private readonly List<ClientTestState> _previousClientValues = new List<ClientTestState>();
+
+        private float Timeout => SyncPositionTestHelpers.Timeout(Settings);
 
         private class ClientTestState
         {
@@ -136,32 +133,31 @@ namespace Mirage.SyncPosition.Tests.Runtime
 
         protected override void ExtraServerSetup()
         {
-            serverSystem = serverGo.AddComponent<SyncPositionSystem>();
-            serverSystem.Server = server;
+            // fixture is reused between tests, clear lists from previous test
+            clientSystem.Clear();
+            _previousClientValues.Clear();
 
-            serverSystem.Setup(server: server, settings: Settings);
+            // note: server only, so this also tests client authority when server is not host
+            serverSystem = SyncPositionTestHelpers.AddSystem(serverGo, server, null, Settings);
         }
 
         protected override void ExtraClientSetup(IClientInstance instance)
         {
-            var system = instance.GameObject.AddComponent<SyncPositionSystem>();
-            system.Setup(client: instance.Client, settings: Settings);
+            var system = SyncPositionTestHelpers.AddSystem(instance.GameObject, null, instance.Client, Settings);
+            clientSystem.Add(system);
         }
 
         protected override async UniTask LateSetup()
         {
             await base.LateSetup();
 
-            for (var i = 0; i < RemoteClientCount; i++)
-            {
-                clientSystem.Add(_remoteClients[i].GameObject.GetComponent<SyncPositionSystem>());
-            }
-
             var clone = InstantiateForTest(_characterPrefab);
             serverObjectManager.Spawn(clone);
             _serverOwned = clone.GetComponent<MockNetworkTransform>();
 
-            await UniTask.DelayFrame(2);
+            // wait for object to spawn on all clients
+            foreach (var remote in _remoteClients)
+                await AsyncUtil.WaitUntilSpawn(remote.Client.World, clone.NetId);
 
             RunOnAll(_serverOwned, (c) =>
             {
@@ -173,9 +169,10 @@ namespace Mirage.SyncPosition.Tests.Runtime
             {
                 var clientOwned = ServerComponent(i);
 
+                // objects owned by clients use client authority
                 RunOnAll(clientOwned, (c) =>
                 {
-                    c._clientAuthority = false;
+                    c._clientAuthority = true;
                     c.Value = START_VALUE;
                 });
 
@@ -211,67 +208,81 @@ namespace Mirage.SyncPosition.Tests.Runtime
             }
         }
 
+        private static bool LastSnapshotIs(MockNetworkTransform behaviour, float value)
+        {
+            var buffer = behaviour._snapshotBuffer;
+            return buffer.SnapshotCount > 0 && buffer.DebugBuffer[buffer.SnapshotCount - 1].state.Value == value;
+        }
+
+        private static void AssertBufferHasNewValue(MockNetworkTransform behaviour)
+        {
+            var buffer = behaviour._snapshotBuffer;
+            var list = buffer.DebugBuffer;
+
+            var snapshotString = $"Snapshots:[{string.Join(",", list)}]";
+
+            Assert.That(buffer.SnapshotCount, Is.GreaterThanOrEqualTo(2), $"Snapshot count should be atleast 2, check was {buffer.SnapshotCount}. Should have received new Value, and added current value. {snapshotString}");
+
+            // all expect last should be START_VALUE
+            for (var i = 0; i < buffer.SnapshotCount - 1; i++)
+            {
+                Assert.That(list[i].state.Value, Is.EqualTo(START_VALUE), $"First snapshot should be the starting value. {snapshotString}");
+            }
+            Assert.That(list[buffer.SnapshotCount - 1].state.Value, Is.EqualTo(FIRST_VALUE), $"Second snapshot should be new value {snapshotString}");
+        }
+
+        /// <summary>
+        /// Checks each frame that value only moves towards FIRST_VALUE, until it reaches it
+        /// </summary>
+        private IEnumerator AssertInterpolatesToFirst(MockNetworkTransform behaviour, ClientTestState state, Action extraChecks = null)
+        {
+            var end = Time.unscaledTime + Timeout;
+            while (!state.Finished && Time.unscaledTime < end)
+            {
+                yield return null;
+                extraChecks?.Invoke();
+
+                var previous = state.Value;
+                var current = behaviour.Value;
+
+                Assert.That(current, Is.GreaterThanOrEqualTo(previous), "Should only move closer to First");
+                Assert.That(current, Is.LessThanOrEqualTo(FIRST_VALUE), "Should not move past First");
+
+                if (current == FIRST_VALUE)
+                    state.Finished = true;
+
+                state.Value = current;
+            }
+
+            Assert.That(state.Finished, Is.True, $"Value should have reached {FIRST_VALUE}, but was {behaviour.Value}");
+        }
+
         [UnityTest]
         public IEnumerator SyncsFromServer()
         {
             _serverOwned.Value = FIRST_VALUE;
 
-            // wait have to wait for whole interval
             // it doesn't check each frame for changes, only each interval
-            yield return new WaitForSeconds(Settings.SyncInterval);
-
-            RunOnAll(_serverOwned, (c) =>
+            yield return SyncPositionTestHelpers.WaitUntil(() =>
             {
-                // dont test server's copy
-                if (_serverOwned == c)
-                {
-                    Assert.That(_serverOwned.Value, Is.EqualTo(FIRST_VALUE));
-                    return;
-                }
-
-                var buffer = c._snapshotBuffer;
-                var list = buffer.DebugBuffer;
-
-                var snapshotString = $"Snapshots:[{string.Join(",", list)}]";
-
-                Assert.That(buffer.SnapshotCount, Is.GreaterThanOrEqualTo(2), $"Snapshot count should be atleast 2, check was {buffer.SnapshotCount}. Should have received new Value, and added current value. {snapshotString}");
-
-                // all expect last should be START_VALUE
-                for (var i = 0; i < buffer.SnapshotCount - 1; i++)
-                {
-                    Assert.That(list[i].state.Value, Is.EqualTo(START_VALUE), $"First snapshot should be the starting value. {snapshotString}");
-                }
-                Assert.That(list[buffer.SnapshotCount - 1].state.Value, Is.EqualTo(FIRST_VALUE), $"Second snapshot should be new value {snapshotString}");
-            });
-
-            // wait for delay
-            yield return new WaitForSeconds(Settings.SyncInterval * Settings.InterpolationDelay);
-
-            // client should then interpolate towards new value over SyncInterval
-            var start = Time.time;
-            var end = start + Settings.SyncInterval;
-
-            for (var now = start; now < end; now += Time.deltaTime)
-            {
-                // wait at start, so that we get first updated of applied values
-                yield return null;
-
                 for (var i = 0; i < RemoteClientCount; i++)
                 {
-                    var behaviour = _remoteClients[i].Get(_serverOwned);
-                    if (_previousClientValues[i].Finished)
-                        continue;
-
-                    var previous = _previousClientValues[i].Value;
-                    var current = behaviour.Value;
-
-                    Assert.That(current, Is.GreaterThan(previous), "Should have moved closer to First");
-
-                    if (current == FIRST_VALUE)
-                        _previousClientValues[i].Finished = true;
-
-                    _previousClientValues[i].Value = current;
+                    if (!LastSnapshotIs(_remoteClients[i].Get(_serverOwned), FIRST_VALUE))
+                        return false;
                 }
+                return true;
+            }, Timeout);
+
+            Assert.That(_serverOwned.Value, Is.EqualTo(FIRST_VALUE));
+            for (var i = 0; i < RemoteClientCount; i++)
+            {
+                AssertBufferHasNewValue(_remoteClients[i].Get(_serverOwned));
+            }
+
+            // client should then interpolate towards new value
+            for (var i = 0; i < RemoteClientCount; i++)
+            {
+                yield return AssertInterpolatesToFirst(_remoteClients[i].Get(_serverOwned), _previousClientValues[i]);
             }
         }
 
@@ -285,58 +296,20 @@ namespace Mirage.SyncPosition.Tests.Runtime
 
             ownerBehaviour.Value = FIRST_VALUE;
 
-            // we have to wait for whole interval
             // it doesn't check each frame for changes, only each interval
-            yield return new WaitForSeconds(Settings.SyncInterval);
+            yield return SyncPositionTestHelpers.WaitUntil(() => serverBehaviour.Value == FIRST_VALUE && LastSnapshotIs(remoteBehaviour, FIRST_VALUE), Timeout);
 
             Assert.That(ownerBehaviour.Value, Is.EqualTo(FIRST_VALUE), "Owner value should not have changed");
             Assert.That(serverBehaviour.Value, Is.EqualTo(FIRST_VALUE), "Server value should have been set without interpolation");
             Assert.That(remoteBehaviour.Value, Is.EqualTo(START_VALUE), "Remote value should not have changed yet, it should wait for interpolation");
+            AssertBufferHasNewValue(remoteBehaviour);
 
+            // remote should then interpolate towards new value
+            yield return AssertInterpolatesToFirst(remoteBehaviour, remoteState, () =>
             {
-                var buffer = remoteBehaviour._snapshotBuffer;
-                var list = buffer.DebugBuffer;
-
-                var snapshotString = $"Snapshots:[{string.Join(",", list)}]";
-
-                Assert.That(buffer.SnapshotCount, Is.GreaterThanOrEqualTo(2), $"Snapshot count should be atleast 2, check was {buffer.SnapshotCount}. Should have received new Value, and added current value. {snapshotString}");
-
-                // all expect last should be START_VALUE
-                for (var i = 0; i < buffer.SnapshotCount - 1; i++)
-                {
-                    Assert.That(list[i].state.Value, Is.EqualTo(START_VALUE), $"First snapshot should be the starting value. {snapshotString}");
-                }
-                Assert.That(list[buffer.SnapshotCount - 1].state.Value, Is.EqualTo(FIRST_VALUE), $"Second snapshot should be new value {snapshotString}");
-            }
-
-            // wait for delay
-            yield return new WaitForSeconds(Settings.SyncInterval * Settings.InterpolationDelay);
-
-            // client should then interpolate towards new value over SyncInterval
-            var start = Time.time;
-            var end = start + Settings.SyncInterval;
-
-            for (var now = start; now < end; now += Time.deltaTime)
-            {
-                // wait at start, so that we get first updated of applied values
-                yield return null;
-
                 Assert.That(ownerBehaviour.Value, Is.EqualTo(FIRST_VALUE), "Owner value should not have changed");
                 Assert.That(serverBehaviour.Value, Is.EqualTo(FIRST_VALUE), "Server value should not have changed");
-
-                if (remoteState.Finished)
-                    continue;
-
-                var previous = remoteState.Value;
-                var current = remoteBehaviour.Value;
-
-                Assert.That(current, Is.GreaterThan(previous), "Should have moved closer to First");
-
-                if (current == FIRST_VALUE)
-                    remoteState.Finished = true;
-
-                remoteState.Value = current;
-            }
+            });
         }
     }
 }
