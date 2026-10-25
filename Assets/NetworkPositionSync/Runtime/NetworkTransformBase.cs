@@ -39,6 +39,16 @@ namespace Mirage.SyncPosition
         [SerializeField] internal bool _clientAuthority = false;
 
         /// <summary>
+        /// Set to true if moves come from owner client, set to false if moves always come from server
+        /// <para>Should be set on both server and clients</para>
+        /// </summary>
+        public bool ClientAuthority
+        {
+            get => _clientAuthority;
+            set => _clientAuthority = value;
+        }
+
+        /// <summary>
         /// Max possible size of write. Need to know if message needs to be split up
         /// </summary>
         public abstract int MaxWriteSize { get; }
