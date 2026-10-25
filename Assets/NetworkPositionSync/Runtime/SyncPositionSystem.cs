@@ -255,7 +255,8 @@ namespace Mirage.SyncPosition
                 }
 
                 _send?.Update(syncTime, _maxItemSize);
-                if (Server.IsHost)
+                // Server is null when system is only used for client
+                if (ServerActive && Server.IsHost)
                     InterpolationTime.OnMessage(now);
             }
         }
