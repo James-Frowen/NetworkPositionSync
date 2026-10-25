@@ -49,6 +49,11 @@ namespace Mirage.SyncPosition
         public abstract void WriteIfDirty(NetworkWriter headerWriter, PooledNetworkWriter dataWriter, bool includeWriteSize);
         public abstract void ClientUpdate(double viewTime, double removeTime);
 
+        /// <summary>
+        /// Error cost for each entry a client sends for an object it does not have client authority over
+        /// </summary>
+        public const int NO_AUTHORITY_ERROR_COST = 2;
+
         /// <param name="sender">Player that sent the data, null if it came from the server. When not null, data is only applied to behaviours that player has client authority over</param>
         public static void ReadAll(double insertTime, PooledNetworkReader metaReader, PooledNetworkReader dataReader, bool includeWriteSize, INetworkPlayer sender = null)
         {
@@ -65,6 +70,9 @@ namespace Mirage.SyncPosition
                 if (behavior != null && sender != null && !behavior.IsClientAuthorityFor(sender))
                 {
                     if (logger.WarnEnabled()) logger.LogWarning($"Player {sender} sent position for {behavior.NetId} but does not have client authority over it");
+                    // small cost because this can happen without cheating, eg if a message was sent just before authority was removed.
+                    // a client that keeps doing it will still hit the error limit
+                    sender.SetError(NO_AUTHORITY_ERROR_COST, PlayerErrorFlags.NoAuthority);
                     behavior = null;
                 }
 

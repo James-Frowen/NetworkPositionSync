@@ -99,12 +99,21 @@ namespace Mirage.SyncPosition.Tests.Runtime
             }
         }
 
+        private void AssertNoAuthorityError(bool expected)
+        {
+            var hasError = (ServerPlayer(0).ErrorFlags & PlayerErrorFlags.NoAuthority) != 0;
+            Assert.That(hasError, Is.EqualTo(expected), expected
+                ? "Sending player should have NoAuthority error"
+                : "Sending player should not have NoAuthority error");
+        }
+
         [Test]
         public void AppliesPositionFromOwnerWithClientAuthority()
         {
             ReceiveFromClient(ServerPlayer(0), true, (ServerComponent(0), SENT_VALUE));
 
             Assert.That(ServerComponent(0).Value, Is.EqualTo(SENT_VALUE));
+            AssertNoAuthorityError(false);
             errorLogs.AssertNoErrors();
         }
 
@@ -122,6 +131,7 @@ namespace Mirage.SyncPosition.Tests.Runtime
 
             Assert.That(other.Value, Is.EqualTo(START_VALUE), "Object owned by other client should not have changed");
             Assert.That(own.Value, Is.EqualTo(SENT_VALUE_2), "Valid entry in same message should still be applied");
+            AssertNoAuthorityError(true);
             errorLogs.AssertNoErrors();
         }
 
@@ -139,6 +149,7 @@ namespace Mirage.SyncPosition.Tests.Runtime
 
             Assert.That(noAuthority.Value, Is.EqualTo(START_VALUE), "Object without client authority should not have changed");
             Assert.That(withAuthority.Value, Is.EqualTo(SENT_VALUE_2), "Valid entry in same message should still be applied");
+            AssertNoAuthorityError(true);
             errorLogs.AssertNoErrors();
         }
 
@@ -154,6 +165,7 @@ namespace Mirage.SyncPosition.Tests.Runtime
             ReceiveFromClient(ServerPlayer(0), true, (serverObject, SENT_VALUE));
 
             Assert.That(serverObject.Value, Is.EqualTo(START_VALUE), "Object without owner should not have changed");
+            AssertNoAuthorityError(true);
             errorLogs.AssertNoErrors();
         }
 
@@ -168,6 +180,7 @@ namespace Mirage.SyncPosition.Tests.Runtime
 
             Assert.That(other.Value, Is.EqualTo(START_VALUE), "Object owned by other client should not have changed");
             Assert.That(own.Value, Is.EqualTo(SENT_VALUE_2), "Valid entry before rejected entry should be applied");
+            AssertNoAuthorityError(true);
             errorLogs.AssertNoErrors();
         }
 
@@ -182,6 +195,7 @@ namespace Mirage.SyncPosition.Tests.Runtime
 
             Assert.That(noAuthority.Value, Is.EqualTo(START_VALUE), "Object without client authority should not have changed");
             Assert.That(withAuthority.Value, Is.EqualTo(SENT_VALUE_2), "Valid entry before rejected entry should be applied");
+            AssertNoAuthorityError(true);
             errorLogs.AssertNoErrors();
         }
     }
