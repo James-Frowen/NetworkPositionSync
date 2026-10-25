@@ -177,6 +177,36 @@ namespace Mirage.SyncPosition
         protected virtual T ReadSnapshot(NetworkReader reader) => reader.Read<T>();
 
 
+        public override bool OnSerialize(NetworkWriter writer, bool initialState)
+        {
+            var written = base.OnSerialize(writer, initialState);
+
+            // include current snapshot in spawn payload,
+            // so that new observers start at the correct position even if the object is not moving
+            // (spawn message only has root transform's values, and not for local/relative coordinates)
+            if (initialState)
+            {
+                CreateSnapshot(out var snapshot, true);
+                WriteSnapshot(writer, snapshot);
+                written = true;
+            }
+
+            return written;
+        }
+
+        public override void OnDeserialize(NetworkReader reader, bool initialState)
+        {
+            base.OnDeserialize(reader, initialState);
+
+            if (initialState)
+            {
+                var snapshot = ReadSnapshot(reader);
+                // apply right away, there is nothing to interpolate from yet
+                _snapshotBuffer.ClearBuffer();
+                ApplySnapshot(snapshot);
+            }
+        }
+
         protected sealed override void ReadAndInsertSnapshot(NetworkReader reader, double insertTime)
         {
             var newSnapshot = ReadSnapshot(reader);
